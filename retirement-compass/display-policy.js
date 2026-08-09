@@ -11,6 +11,35 @@
     maximumFractionDigits: 0
   });
 
+  function forceDarkOnlyChrome() {
+    document.documentElement.style.colorScheme = 'dark';
+
+    let colorScheme = document.querySelector('meta[name="color-scheme"]');
+    if (!colorScheme) {
+      colorScheme = document.createElement('meta');
+      colorScheme.name = 'color-scheme';
+      document.head.appendChild(colorScheme);
+    }
+    colorScheme.content = 'dark';
+
+    let themeColor = document.querySelector('meta[name="theme-color"]');
+    if (!themeColor) {
+      themeColor = document.createElement('meta');
+      themeColor.name = 'theme-color';
+      document.head.appendChild(themeColor);
+    }
+
+    const keepDark = () => {
+      if (themeColor.content !== '#0b100e') themeColor.content = '#0b100e';
+      if (colorScheme.content !== 'dark') colorScheme.content = 'dark';
+    };
+    keepDark();
+
+    const observer = new MutationObserver(keepDark);
+    observer.observe(themeColor, { attributes: true, attributeFilter: ['content'] });
+    observer.observe(colorScheme, { attributes: true, attributeFilter: ['content'] });
+  }
+
   function readForm() {
     const data = {};
     document.querySelectorAll('input[id], select[id]').forEach((el) => {
@@ -160,6 +189,7 @@
   }
 
   function init() {
+    forceDarkOnlyChrome();
     ensureToggleCopy();
     schedule();
     document.addEventListener('input', schedule);
