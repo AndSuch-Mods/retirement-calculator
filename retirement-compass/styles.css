@@ -379,6 +379,36 @@ h1 {
   border-radius: var(--radius-md);
   background: var(--brand-soft);
 }
+.social-security-toggle {
+  margin-top: 18px;
+  border-top: 1px solid var(--line);
+  padding-top: 18px;
+}
+.social-security-panel {
+  margin-top: 0;
+  padding: 16px;
+  border-radius: var(--radius-md);
+  border: 1px solid #cfe0da;
+  background: linear-gradient(145deg, #eef7f4, #f8fbfa);
+}
+.social-security-panel .field-grid { margin-top: 0; }
+.rules-note {
+  margin-top: 14px;
+  padding-top: 13px;
+  border-top: 1px solid #d6e6e0;
+}
+.rules-note strong {
+  display: block;
+  margin-bottom: 3px;
+  color: var(--brand-strong);
+  font-size: 0.84rem;
+}
+.rules-note span {
+  display: block;
+  color: var(--muted);
+  font-size: 0.73rem;
+  line-height: 1.4;
+}
 
 .assumptions {
   margin-top: 26px;
@@ -445,6 +475,7 @@ h1 {
 .legend span { display: inline-flex; align-items: center; gap: 6px; }
 .legend-line { width: 19px; height: 2px; background: var(--brand); border-radius: 99px; }
 .legend-marker { width: 2px; height: 14px; border-left: 2px dashed var(--accent); }
+.legend-ss { width: 2px; height: 14px; border-left: 2px dotted #4f7da6; }
 .chart-shell {
   min-height: 350px;
   overflow: hidden;
@@ -468,7 +499,7 @@ h1 {
 .detail-grid {
   margin-top: 16px;
   display: grid;
-  grid-template-columns: repeat(3, minmax(0,1fr));
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
   gap: 16px;
 }
 .detail-card { border-radius: var(--radius-md); padding: 18px; }
