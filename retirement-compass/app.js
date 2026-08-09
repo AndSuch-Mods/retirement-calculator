@@ -7,7 +7,8 @@
     'currentAge', 'retirementAge', 'planThroughAge', 'currentSavings', 'currentIncome',
     'employeeContributionPct', 'employerMatchRatePct', 'employerMatchCapPct', 'salaryGrowthPct',
     'autoIncreaseEnabled', 'autoIncreasePctPoints', 'maxEmployeeContributionPct',
-    'desiredSpending', 'otherRetirementIncome', 'preRetirementReturnPct',
+    'desiredSpending', 'otherRetirementIncome', 'socialSecurityEnabled',
+    'socialSecurityClaimAge', 'socialSecurityCareerStartAge', 'preRetirementReturnPct',
     'retirementReturnPct', 'inflationPct'
   ];
 
@@ -39,10 +40,15 @@
       else el.value = values[id];
     });
     syncAutoIncreaseVisibility();
+    syncSocialSecurityVisibility();
   }
 
   function syncAutoIncreaseVisibility() {
     $('autoIncreaseFields').hidden = !$('autoIncreaseEnabled').checked;
+  }
+
+  function syncSocialSecurityVisibility() {
+    $('socialSecurityFields').hidden = !$('socialSecurityEnabled').checked;
   }
 
   function dollarValue(realValue, nominalValue) {
@@ -64,6 +70,13 @@
 
   function formatPercent(value) {
     return Number.isFinite(value) ? percent1.format(value) : '—';
+  }
+
+  function formatAge(age) {
+    if (!Number.isFinite(age)) return '—';
+    const whole = Math.floor(age + 1e-8);
+    const months = Math.round((age - whole) * 12);
+    return months ? `${whole} + ${months} mo` : `${whole}`;
   }
 
   function renderValidation(result) {
@@ -104,10 +117,10 @@
 
     const pill = $('statusPill');
     pill.classList.remove('positive', 'negative');
-    if (result.spendingGapReal <= 0) {
+    if (result.requiredNestEggReal <= 0) {
       pill.textContent = 'Income covers goal';
       pill.classList.add('positive');
-      $('statusHeadline').textContent = 'Your other retirement income already covers the spending goal.';
+      $('statusHeadline').textContent = 'Your non-portfolio retirement income covers the spending goal.';
       $('statusExplanation').textContent = 'This portfolio is modeled as extra cushion because no annual withdrawal is required from it.';
     } else if (result.onTrack) {
       pill.textContent = 'On track';
@@ -128,9 +141,9 @@
     const metric = $('recommendationMetric');
     metric.hidden = false;
 
-    if (result.spendingGapReal <= 0) {
+    if (result.requiredNestEggReal <= 0) {
       $('recommendationTitle').textContent = 'Your portfolio is optional for the stated spending goal';
-      $('recommendationText').textContent = 'Because other retirement income meets or exceeds your spending goal, the calculator does not require withdrawals from this account.';
+      $('recommendationText').textContent = 'Estimated Social Security plus other retirement income meets or exceeds your spending goal in the modeled years.';
       $('recommendationMetricLabel').textContent = 'Portfolio income modeled as extra';
       $('recommendationMetricValue').textContent = `${formatMoney(result.sustainablePortfolioIncomeReal)} / yr`;
       return;
@@ -138,7 +151,7 @@
 
     if (result.onTrack) {
       $('recommendationTitle').textContent = 'Your current path clears the modeled target';
-      $('recommendationText').textContent = 'The plan funds the stated spending gap through your plan-through age using the return and inflation assumptions shown.';
+      $('recommendationText').textContent = 'The plan funds the changing portfolio need before and after Social Security starts, using the return and inflation assumptions shown.';
       $('recommendationMetricLabel').textContent = 'Cushion at retirement, today’s dollars';
       $('recommendationMetricValue').textContent = formatMoney(Math.max(result.surplusReal, 0));
       return;
@@ -147,23 +160,38 @@
     if (result.requiredFlatEmployeeRate != null) {
       const targetRate = result.requiredFlatEmployeeRate;
       $('recommendationTitle').textContent = 'The savings rate is the cleanest lever to pull';
-      $('recommendationText').textContent = `A flat employee contribution of about ${formatPercent(targetRate)} is modeled to reach the target, before changing retirement age, spending, or investment assumptions.`;
-      $('recommendationMetricLabel').textContent = 'Approx. extra employee savings at today’s salary';
+      $('recommendationText').textContent = `A planned employee contribution of about ${formatPercent(targetRate)} is modeled to reach the target, with IRS annual limits automatically applied each year.`;
+      $('recommendationMetricLabel').textContent = 'Approx. extra employee savings this year';
       $('recommendationMetricValue').textContent = `${formatMoney(result.additionalMonthlyContributionNeeded)} / mo`;
     } else {
       $('recommendationTitle').textContent = 'Contribution changes alone do not close the modeled gap';
-      $('recommendationText').textContent = 'Even at a 60% employee contribution rate, this scenario does not fully reach the modeled target. Retirement age, spending, outside income, or assumptions need to change too.';
+      $('recommendationText').textContent = 'Even a very high planned contribution is constrained by IRS annual limits. Retirement age, spending, outside income, or assumptions need to change too.';
       $('recommendationMetricLabel').textContent = 'Modeled shortfall at retirement';
       $('recommendationMetricValue').textContent = formatMoney(Math.abs(result.surplusReal));
     }
+  }
+
+  function renderSocialSecurityEstimate(result) {
+    const ss = result.socialSecurity;
+    if (!ss.enabled) {
+      $('socialSecurityEstimateInline').textContent = 'Social Security estimate is turned off.';
+      $('socialSecurityEstimateDetail').textContent = 'Turn it on to include an estimated retirement benefit in the plan.';
+      return;
+    }
+    $('socialSecurityEstimateInline').textContent = `${formatMoney(ss.monthlyBenefitReal)} / month at age ${ss.claimAge} in today’s dollars`;
+    $('socialSecurityEstimateDetail').textContent = `Estimated from ${ss.earningsYearsModeled} modeled earnings years, with full retirement age ${formatAge(ss.fullRetirementAge)} and current-law claiming adjustments.`;
   }
 
   function renderIncome(result) {
     const retirementInflationFactor = Math.pow(1 + result.input.inflationPct / 100, result.workYears);
     const modeFactor = displayState.mode === 'real' ? 1 : retirementInflationFactor;
     $('spendingGoalResult').textContent = `${formatMoney(result.input.desiredSpending * modeFactor)} / yr`;
+    $('socialSecurityIncomeResult').textContent = result.socialSecurity.enabled
+      ? `${formatMoney(result.socialSecurity.annualBenefitReal * modeFactor)} / yr at ${result.socialSecurity.claimAge}`
+      : 'Off';
     $('otherIncomeResult').textContent = `${formatMoney(result.input.otherRetirementIncome * modeFactor)} / yr`;
-    $('portfolioGapResult').textContent = `${formatMoney(result.spendingGapReal * modeFactor)} / yr`;
+    $('portfolioGapBeforeSsResult').textContent = `${formatMoney(result.portfolioGapBeforeSocialSecurityReal * modeFactor)} / yr`;
+    $('portfolioGapResult').textContent = `${formatMoney(result.portfolioGapAfterSocialSecurityReal * modeFactor)} / yr`;
     $('sustainableIncomeResult').textContent = `${formatMoney(result.sustainablePortfolioIncomeReal * modeFactor)} / yr`;
   }
 
@@ -171,12 +199,37 @@
     const startingTotal = result.startingEmployeeRate + result.startingMatchRate;
     const endingTotal = result.endingEmployeeRate + result.endingMatchRate;
     $('contributionRateResult').textContent = `${formatPercent(startingTotal)} total to start`;
-    $('contributionDetailResult').textContent = result.input.autoIncreaseEnabled
-      ? `Employee rate rises from ${formatPercent(result.startingEmployeeRate)} to ${formatPercent(result.endingEmployeeRate)}; modeled total rate ends near ${formatPercent(endingTotal)} including match.`
-      : `${formatPercent(result.startingEmployeeRate)} from you + ${formatPercent(result.startingMatchRate)} effective employer match.`;
+
+    let contributionCopy;
+    if (result.contributionCapEvents.length) {
+      const first = result.firstContributionCapEvent;
+      contributionCopy = `Your planned rate first reaches an IRS contribution limit in ${first.year} around age ${Math.round(first.age)}. The model caps contributions automatically from there.`;
+    } else if (result.input.autoIncreaseEnabled) {
+      contributionCopy = `Effective employee savings rise from ${formatPercent(result.startingEmployeeRate)} to ${formatPercent(result.endingEmployeeRate)}; modeled total ends near ${formatPercent(endingTotal)} including match.`;
+    } else {
+      contributionCopy = `${formatPercent(result.startingEmployeeRate)} from you + ${formatPercent(result.startingMatchRate)} effective employer match after annual IRS limits.`;
+    }
+    $('contributionDetailResult').textContent = contributionCopy;
+
     $('yearsToRetirementResult').textContent = `${result.workYears} years`;
     $('retirementDurationResult').textContent = `Then ${result.retirementYears} modeled retirement years, through age ${result.input.planThroughAge}.`;
     $('realReturnResult').textContent = formatPercent(result.realRetirementReturn);
+
+    if (result.socialSecurity.enabled) {
+      $('socialSecurityDetailResult').textContent = `${formatMoney(result.socialSecurity.monthlyBenefitReal)} / mo at ${result.socialSecurity.claimAge}`;
+      $('socialSecurityDetailCopy').textContent = `Estimated full-retirement age ${formatAge(result.socialSecurity.fullRetirementAge)}. Benefit uses a modeled 35-year indexed earnings record and current-law bend-point/claiming rules.`;
+    } else {
+      $('socialSecurityDetailResult').textContent = 'Not included';
+      $('socialSecurityDetailCopy').textContent = 'Turn on the Social Security estimator to include it in the retirement-income timeline.';
+    }
+
+    const currentLimits = result.currentIrsLimits;
+    $('irsLimitResult').textContent = `${formatMoney(currentLimits.employeeDeferralMax)} employee max in ${result.rulesBaseYear}`;
+    const baseText = `Base deferral ${formatMoney(currentLimits.deferral)}; total employee + employer annual-additions limit ${formatMoney(currentLimits.overall)} before catch-up.`;
+    const projectionText = result.contributionCapEvents.length
+      ? ` Your current plan first hits a modeled limit in ${result.firstContributionCapEvent.year}.`
+      : ' Your current plan stays below the modeled limits through retirement.';
+    $('irsLimitDetailResult').textContent = baseText + projectionText;
   }
 
   function niceMax(value) {
@@ -230,10 +283,14 @@
     const retirementPoint = data.find((d) => d.age === result.input.retirementAge) || data[result.workYears];
     const targetValue = displayState.mode === 'real' ? result.requiredNestEggReal : result.requiredNestEggNominal;
     const targetY = y(targetValue);
+    const ssMarker = result.socialSecurity.enabled && result.socialSecurity.claimAge >= minAge && result.socialSecurity.claimAge <= maxAge
+      ? `<line x1="${x(result.socialSecurity.claimAge)}" y1="${pad.top}" x2="${x(result.socialSecurity.claimAge)}" y2="${pad.top + plotH}" stroke="#4f7da6" stroke-width="2" stroke-dasharray="3 6"/>
+         <text x="${Math.min(x(result.socialSecurity.claimAge) + 8, width - 125)}" y="${pad.top + 34}" fill="#3d6487" font-size="11" font-weight="700">Social Security ${result.socialSecurity.claimAge}</text>`
+      : '';
 
     svg.innerHTML = `
       <title id="chartTitle">Retirement portfolio projection</title>
-      <desc id="chartDesc">Projected portfolio from age ${minAge} through ${maxAge}, with retirement beginning at age ${result.input.retirementAge}.</desc>
+      <desc id="chartDesc">Projected portfolio from age ${minAge} through ${maxAge}, with retirement beginning at age ${result.input.retirementAge}${result.socialSecurity.enabled ? ` and Social Security starting at age ${result.socialSecurity.claimAge}` : ''}.</desc>
       <defs>
         <linearGradient id="areaGradient" x1="0" x2="0" y1="0" y2="1">
           <stop offset="0%" stop-color="#0e6755" stop-opacity="0.24"/>
@@ -244,6 +301,7 @@
       <polygon points="${areaPoints}" fill="url(#areaGradient)"/>
       <line x1="${retirementX}" y1="${pad.top}" x2="${retirementX}" y2="${pad.top + plotH}" stroke="#d8a34a" stroke-width="2" stroke-dasharray="6 6"/>
       <text x="${Math.min(retirementX + 9, width - 100)}" y="${pad.top + 15}" fill="#8a5a10" font-size="12" font-weight="700">Retire at ${result.input.retirementAge}</text>
+      ${ssMarker}
       ${result.requiredNestEggReal > 0 ? `<circle cx="${retirementX}" cy="${targetY}" r="5" fill="#d8a34a" stroke="#fff" stroke-width="2"/><text x="${Math.min(retirementX + 10, width - 105)}" y="${Math.max(targetY - 9, 18)}" fill="#8a5a10" font-size="11">Target ${compactCurrency.format(targetValue)}</text>` : ''}
       <polyline points="${points}" fill="none" stroke="#0e6755" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
       <circle cx="${retirementX}" cy="${y(retirementPoint.value)}" r="6" fill="#0e6755" stroke="#fff" stroke-width="3"/>
@@ -252,7 +310,9 @@
 
     const modeText = displayState.mode === 'real' ? 'today’s purchasing power' : 'nominal future dollars';
     $('chartDescription').textContent = `Estimated year-end balance in ${modeText}, while working and while drawing retirement income.`;
-    $('chartFooterLeft').textContent = `Retirement begins at age ${result.input.retirementAge}.`;
+    $('chartFooterLeft').textContent = result.socialSecurity.enabled
+      ? `Retire at ${result.input.retirementAge}; Social Security starts at ${result.socialSecurity.claimAge}.`
+      : `Retirement begins at age ${result.input.retirementAge}.`;
     if (result.depletedAtAge) {
       $('chartFooterRight').textContent = `Portfolio reaches $0 around age ${result.depletedAtAge}.`;
     } else {
@@ -269,6 +329,7 @@
 
     renderStatus(result);
     renderRecommendation(result);
+    renderSocialSecurityEstimate(result);
     renderIncome(result);
     renderDetails(result);
     renderChart(result);
@@ -280,6 +341,7 @@
       const eventName = el.type === 'checkbox' ? 'change' : 'input';
       el.addEventListener(eventName, () => {
         if (id === 'autoIncreaseEnabled') syncAutoIncreaseVisibility();
+        if (id === 'socialSecurityEnabled') syncSocialSecurityVisibility();
         calculateAndRender();
       });
     });
