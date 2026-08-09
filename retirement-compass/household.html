@@ -3,10 +3,12 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#f4f7f6">
+  <meta name="theme-color" content="#0b100e">
+  <meta name="color-scheme" content="dark">
   <meta name="description" content="A household retirement planner with Social Security, IRS contribution limits, and Alabama TRS pension estimates.">
   <title>Retirement Compass</title>
   <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="dark.css">
   <style>
     select{font:inherit;color:inherit}.select-wrap select{width:100%;min-width:0;border:0;outline:0;background:transparent;padding:11px 12px;color:var(--ink);font-weight:700}.input-wrap input[type="date"]{min-height:44px}.standalone-panel{margin-top:18px}.embedded-switch{margin:0;padding:0 0 14px}.spouse-toggle{margin-top:0;padding:18px;border:1px solid #cfe0da;border-radius:var(--radius-md);background:linear-gradient(145deg,#eef7f4,#f8fbfa)}.spouse-section{margin-top:18px;padding:20px;border:1px solid var(--line);border-radius:var(--radius-lg);background:#fbfcfb}.trs-panel{margin-top:15px;padding:16px;border:1px solid #ead9b8;border-radius:var(--radius-md);background:linear-gradient(145deg,#fff9ed,#fffdf8)}.trs-panel .rules-note{border-top-color:#eadfc9}.trs-panel .rules-note strong{color:#7d5515}@media(max-width:720px){.spouse-section{padding:16px 12px}}
   </style>
@@ -25,8 +27,8 @@
         <p class="intro-copy">Model separate birthdays, retirement dates, savings plans, Social Security, and an Alabama TRS pension—then combine everything into one household cash-flow projection.</p>
       </div>
       <div class="currency-toggle" role="group" aria-label="Dollar display">
-        <button type="button" class="segment is-active" data-display-mode="real">Today’s dollars</button>
-        <button type="button" class="segment" data-display-mode="nominal">Future dollars</button>
+        <button type="button" class="segment is-active" data-display-mode="real">Today’s buying power</button>
+        <button type="button" class="segment" data-display-mode="nominal">Future equivalent $</button>
       </div>
     </section>
 
@@ -113,7 +115,7 @@
         <div class="section-heading compact"><div><span class="step-number">3</span><div><h2>Household retirement lifestyle</h2><p>One spending target, offset by both spouses’ income streams as they begin.</p></div></div></div>
         <div class="field-grid field-grid-2">
           <label class="field"><span>Annual household spending goal</span><span class="input-wrap prefix-wrap"><span class="prefix">$</span><input id="desiredSpending" type="number" min="0" step="1000"></span><small>Entered in today’s purchasing power.</small></label>
-          <label class="field"><span>Other household retirement income</span><span class="input-wrap prefix-wrap"><span class="prefix">$</span><input id="otherRetirementIncome" type="number" min="0" step="1000"></span><small>Pensions or income not already modeled above.</small></label>
+          <label class="field"><span>Other household retirement income</span><span class="input-wrap prefix-wrap"><span class="prefix">$</span><input id="otherRetirementIncome" type="number" min="0" step="1000"></span><small>Enter the actual annual future-dollar amount expected beginning at first retirement. It is held fixed and is not automatically increased with inflation.</small></label>
         </div>
 
         <details class="assumptions" id="assumptionsPanel">
@@ -128,7 +130,7 @@
 
       <aside class="summary-panel" aria-live="polite">
         <div class="status-card" id="statusCard">
-          <div class="status-topline"><span class="status-pill" id="statusPill">Calculating</span><span class="mode-label" id="summaryModeLabel">Today’s dollars</span></div>
+          <div class="status-topline"><span class="status-pill" id="statusPill">Calculating</span><span class="mode-label" id="summaryModeLabel">Today’s buying power</span></div>
           <p class="status-kicker">Projected portfolio at first retirement</p>
           <div class="hero-value" id="projectedNestEgg">—</div>
           <div class="funding-row"><div class="funding-ring" id="fundingRing" aria-hidden="true"><span id="fundingPercent">—</span></div><div><strong id="statusHeadline">Checking your household plan…</strong><p id="statusExplanation">Change any input and the results update automatically.</p></div></div>
@@ -171,8 +173,10 @@
 
   <script src="model.js"></script>
   <script src="household.js"></script>
+  <script src="income-policy.js"></script>
   <script src="enhancements.js"></script>
   <script src="app-household.js"></script>
   <script src="income-clarity.js"></script>
+  <script src="display-policy.js"></script>
 </body>
 </html>
