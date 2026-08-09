@@ -4,6 +4,20 @@
   const Model = root.HouseholdModel;
   if (!Model) return;
 
+  const HISTORICAL_INFLATION_PCT = 3.07;
+  const HISTORICAL_INFLATION_PERIOD = '1928–2025 CPI-U CAGR';
+
+  if (Model.DEFAULTS) {
+    Model.DEFAULTS = Object.freeze({ ...Model.DEFAULTS, inflationPct: HISTORICAL_INFLATION_PCT });
+  }
+  if (Model.HISTORICAL_ASSUMPTIONS) {
+    Model.HISTORICAL_ASSUMPTIONS = Object.freeze({
+      ...Model.HISTORICAL_ASSUMPTIONS,
+      inflationPct: HISTORICAL_INFLATION_PCT,
+      inflationPeriod: HISTORICAL_INFLATION_PERIOD
+    });
+  }
+
   const money = new Intl.NumberFormat('en-US', {
     style: 'currency',
     currency: 'USD',
@@ -55,6 +69,24 @@
 
   function displayAnnual(realValue, result) {
     return isRealMode() ? realValue : realValue * firstRetirementFactor(result);
+  }
+
+  function applyHistoricalInflationBaseline() {
+    const toggle = $('historicalBaselineEnabled');
+    const input = $('inflationPct');
+    if (toggle?.checked && input && Number(input.value) !== HISTORICAL_INFLATION_PCT) {
+      input.value = HISTORICAL_INFLATION_PCT.toFixed(2);
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+    }
+
+    const box = $('historicalBaselineBox');
+    const inflationCard = box?.querySelector('.historical-values > div:nth-child(3)');
+    if (inflationCard) {
+      const value = inflationCard.querySelector('b');
+      const detail = inflationCard.querySelectorAll('span')[1];
+      if (value) value.textContent = `${HISTORICAL_INFLATION_PCT.toFixed(2)}%`;
+      if (detail) detail.textContent = HISTORICAL_INFLATION_PERIOD;
+    }
   }
 
   function ensureIncomeBreakdown() {
@@ -164,7 +196,21 @@
 
   function init() {
     ensureIncomeBreakdown();
+    applyHistoricalInflationBaseline();
     render();
+
+    const baselineToggle = $('historicalBaselineEnabled');
+    baselineToggle?.addEventListener('change', () => {
+      if (baselineToggle.checked) setTimeout(applyHistoricalInflationBaseline, 0);
+    });
+
+    $('resetButton')?.addEventListener('click', () => {
+      setTimeout(() => {
+        applyHistoricalInflationBaseline();
+        render();
+      }, 0);
+    });
+
     document.addEventListener('input', scheduleRender);
     document.addEventListener('change', scheduleRender);
     document.addEventListener('click', (event) => {
