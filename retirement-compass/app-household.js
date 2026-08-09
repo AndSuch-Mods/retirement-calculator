@@ -100,7 +100,7 @@
   }
 
   function renderDetails(result){
-    const primaryRet=Model.addYears(result.primary.birthDate,result.primary.retirementAge); const spouseRet=result.spouse?Model.addYears(result.spouse.birthDate,result.spouse.retirementAge):null;
+    const primaryRet=Model.addYears(result.primary.birth,result.primary.retirementAge); const spouseRet=result.spouse?Model.addYears(result.spouse.birth,result.spouse.retirementAge):null;
     $('retirementDatesResult').textContent=result.spouse?`${formatDate(primaryRet)} / ${formatDate(spouseRet)}`:formatDate(primaryRet);
     $('retirementDatesDetail').textContent=result.spouse?`You retire at ${formatAge(result.primary.retirementAge)}; spouse at ${formatAge(result.spouse.retirementAge)}. Household retirement spending starts with the first retirement.`:`Retirement begins at age ${result.primary.retirementAge}.`;
     if(result.spouse&&result.trs.enabled){$('trsDetailResult').textContent=result.trs.eligible?`${formatMoney(result.trs.monthlyBenefitNominal)}/mo`:'Not vested in model';$('trsDetailText').textContent=result.trs.eligible?`Maximum-benefit estimate at pension start; Tier ${result.trs.tier}, ${result.trs.serviceAtStop.toFixed(1)} years of service. No automatic COLA assumed.`:result.trs.eligibilityText;}
@@ -119,8 +119,8 @@
     const ticks=[];const count=7;const startYear=result.asOfDate.getUTCFullYear();for(let i=0;i<=count;i++){const t=maxX*i/count;ticks.push(`<text x="${x(t)}" y="${height-14}" text-anchor="middle" fill="#74817b" font-size="12">${startYear+Math.round(t)}</text>`);}
     const pts=data.map(d=>`${x(d.yearsFromNow).toFixed(2)},${y(d.value).toFixed(2)}`).join(' ');const area=`${x(0)},${pad.top+plotH} ${pts} ${x(maxX)},${pad.top+plotH}`;
     function marker(date,label,color,dash){const t=Model.yearsBetween(result.asOfDate,date);if(t<0||t>maxX)return'';const xx=x(t);return `<line x1="${xx}" y1="${pad.top}" x2="${xx}" y2="${pad.top+plotH}" stroke="${color}" stroke-width="2" stroke-dasharray="${dash}"/><text x="${Math.min(xx+7,width-120)}" y="${pad.top+14}" fill="${color}" font-size="11" font-weight="700">${label}</text>`;}
-    let markers=marker(Model.addYears(result.primary.birthDate,result.primary.retirementAge),'You retire','#b37b22','6 6');
-    if(result.spouse)markers+=marker(Model.addYears(result.spouse.birthDate,result.spouse.retirementAge),'Spouse retires','#d8a34a','6 6');
+    let markers=marker(Model.addYears(result.primary.birth,result.primary.retirementAge),'You retire','#b37b22','6 6');
+    if(result.spouse)markers+=marker(Model.addYears(result.spouse.birth,result.spouse.retirementAge),'Spouse retires','#d8a34a','6 6');
     if(result.socialSecurity.enabled)markers+=marker(result.socialSecurity.claimDate,'Your SS','#4f7da6','2 6');
     if(result.spouse&&result.spouseSocialSecurity.enabled)markers+=marker(result.spouseSocialSecurity.claimDate,'Spouse SS','#6c91b1','2 6');
     const targetX=x(Math.max(Model.yearsBetween(result.asOfDate,result.firstRetirementDate),0));const targetValue=displayState.mode==='real'?result.requiredNestEggReal:result.requiredNestEggNominal;
