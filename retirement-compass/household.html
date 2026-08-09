@@ -1,0 +1,176 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f4f7f6">
+  <meta name="description" content="A household retirement planner with Social Security, IRS contribution limits, and Alabama TRS pension estimates.">
+  <title>Retirement Compass</title>
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    select{font:inherit;color:inherit}.select-wrap select{width:100%;min-width:0;border:0;outline:0;background:transparent;padding:11px 12px;color:var(--ink);font-weight:700}.input-wrap input[type="date"]{min-height:44px}.standalone-panel{margin-top:18px}.embedded-switch{margin:0;padding:0 0 14px}.spouse-toggle{margin-top:0;padding:18px;border:1px solid #cfe0da;border-radius:var(--radius-md);background:linear-gradient(145deg,#eef7f4,#f8fbfa)}.spouse-section{margin-top:18px;padding:20px;border:1px solid var(--line);border-radius:var(--radius-lg);background:#fbfcfb}.trs-panel{margin-top:15px;padding:16px;border:1px solid #ead9b8;border-radius:var(--radius-md);background:linear-gradient(145deg,#fff9ed,#fffdf8)}.trs-panel .rules-note{border-top-color:#eadfc9}.trs-panel .rules-note strong{color:#7d5515}@media(max-width:720px){.spouse-section{padding:16px 12px}}
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="#" aria-label="Retirement Compass home"><span class="brand-mark" aria-hidden="true">RC</span><span>Retirement Compass</span></a>
+    <button class="button button-quiet" id="resetButton" type="button">Reset example</button>
+  </header>
+
+  <main class="page-shell">
+    <section class="intro" aria-labelledby="pageTitle">
+      <div>
+        <p class="eyebrow">Household retirement planning</p>
+        <h1 id="pageTitle">See how both retirements fit together.</h1>
+        <p class="intro-copy">Model separate birthdays, retirement dates, savings plans, Social Security, and an Alabama TRS pension—then combine everything into one household cash-flow projection.</p>
+      </div>
+      <div class="currency-toggle" role="group" aria-label="Dollar display">
+        <button type="button" class="segment is-active" data-display-mode="real">Today’s dollars</button>
+        <button type="button" class="segment" data-display-mode="nominal">Future dollars</button>
+      </div>
+    </section>
+
+    <div id="validationBanner" class="validation-banner" role="alert" hidden></div>
+
+    <div class="workspace">
+      <section class="input-panel" aria-label="Retirement plan inputs">
+        <div class="section-heading"><div><span class="step-number">1</span><div><h2>You</h2><p>Birthday-based ages make Social Security and IRS age rules more precise.</p></div></div></div>
+        <div class="field-grid field-grid-3">
+          <label class="field"><span>Your birthday</span><span class="input-wrap"><input id="birthDate" type="date"></span><small id="primaryAgeNote">Current age calculated automatically.</small></label>
+          <label class="field"><span>Retire at age</span><span class="input-wrap"><input id="retirementAge" type="number" min="18" max="110" step="1"><span class="suffix">years</span></span></label>
+          <label class="field"><span>Plan until each person reaches</span><span class="input-wrap"><input id="planThroughAge" type="number" min="60" max="120" step="1"><span class="suffix">years</span></span></label>
+        </div>
+        <div class="field-grid field-grid-2">
+          <label class="field"><span>Current retirement savings</span><span class="input-wrap prefix-wrap"><span class="prefix">$</span><input id="currentSavings" type="number" min="0" step="1000"></span></label>
+          <label class="field"><span>Annual salary</span><span class="input-wrap prefix-wrap"><span class="prefix">$</span><input id="currentIncome" type="number" min="0" step="1000"></span></label>
+          <label class="field"><span>Your 401(k) contribution</span><span class="input-wrap"><input id="employeeContributionPct" type="number" min="0" max="100" step="0.5"><span class="suffix">%</span></span><small>Automatically capped at the modeled IRS annual limit.</small></label>
+          <label class="field"><span>Expected annual raise</span><span class="input-wrap"><input id="salaryGrowthPct" type="number" min="-20" max="50" step="0.1"><span class="suffix">%</span></span></label>
+        </div>
+        <div class="match-box"><div class="match-copy"><strong>Employer match</strong><span>Matches</span></div><label class="inline-field"><input id="employerMatchRatePct" type="number" min="0" max="500" step="1"><span>%</span></label><span>of what I contribute, up to</span><label class="inline-field"><input id="employerMatchCapPct" type="number" min="0" max="100" step="0.5"><span>%</span></label><span>of salary.</span></div>
+        <label class="switch-row" for="autoIncreaseEnabled"><span><strong>Automatically increase my contribution each year</strong><small>The annual dollar amount will still stop at the projected IRS limit.</small></span><span class="switch"><input id="autoIncreaseEnabled" type="checkbox"><span aria-hidden="true"></span></span></label>
+        <div class="field-grid field-grid-2 nested-fields" id="autoIncreaseFields" hidden>
+          <label class="field"><span>Increase each year</span><span class="input-wrap"><input id="autoIncreasePctPoints" type="number" min="0" max="25" step="0.5"><span class="suffix">pts</span></span></label>
+          <label class="field"><span>Stop increasing at</span><span class="input-wrap"><input id="maxEmployeeContributionPct" type="number" min="0" max="100" step="0.5"><span class="suffix">%</span></span></label>
+        </div>
+        <div class="social-security-panel standalone-panel">
+          <label class="switch-row embedded-switch" for="socialSecurityEnabled"><span><strong>Estimate my Social Security automatically</strong><small>Uses a projected 35-year indexed earnings record and current-law claiming adjustments.</small></span><span class="switch"><input id="socialSecurityEnabled" type="checkbox"><span aria-hidden="true"></span></span></label>
+          <div id="primarySocialSecurityFields">
+            <div class="field-grid field-grid-2">
+              <label class="field"><span>Claim Social Security at age</span><span class="input-wrap"><input id="socialSecurityClaimAge" type="number" min="62" max="70" step="1"><span class="suffix">years</span></span></label>
+              <label class="field"><span>Career earnings started around age</span><span class="input-wrap"><input id="socialSecurityCareerStartAge" type="number" min="14" max="40" step="1"><span class="suffix">years</span></span></label>
+            </div>
+            <div class="rules-note"><strong id="socialSecurityEstimateInline">Estimating…</strong><span id="socialSecurityEstimateDetail"></span></div>
+          </div>
+        </div>
+
+        <div class="divider"></div>
+
+        <label class="switch-row spouse-toggle" for="spouseEnabled"><span><strong>Include a spouse in this plan</strong><small>Combines two retirement dates, account balances, Social Security estimates, and retirement income streams.</small></span><span class="switch"><input id="spouseEnabled" type="checkbox"><span aria-hidden="true"></span></span></label>
+
+        <div id="spouseFields" class="spouse-section" hidden>
+          <div class="section-heading compact"><div><span class="step-number">2</span><div><h2>Spouse</h2><p>Separate work and retirement assumptions, merged into the same household projection.</p></div></div></div>
+          <div class="field-grid field-grid-3">
+            <label class="field"><span>Spouse birthday</span><span class="input-wrap"><input id="spouseBirthDate" type="date"></span><small id="spouseAgeNote">Current age calculated automatically.</small></label>
+            <label class="field"><span>Spouse retires at age</span><span class="input-wrap"><input id="spouseRetirementAge" type="number" min="18" max="110" step="1"><span class="suffix">years</span></span></label>
+            <label class="field"><span>Annual salary</span><span class="input-wrap prefix-wrap"><span class="prefix">$</span><input id="spouseCurrentIncome" type="number" min="0" step="1000"></span></label>
+          </div>
+          <div class="field-grid field-grid-2">
+            <label class="field"><span>Current voluntary retirement savings</span><span class="input-wrap prefix-wrap"><span class="prefix">$</span><input id="spouseCurrentSavings" type="number" min="0" step="1000"></span><small>403(b), RSA-1, IRA rollover, or similar invested retirement balance.</small></label>
+            <label class="field"><span>Expected annual raise</span><span class="input-wrap"><input id="spouseSalaryGrowthPct" type="number" min="-20" max="50" step="0.1"><span class="suffix">%</span></span></label>
+            <label class="field"><span>Voluntary contribution</span><span class="input-wrap"><input id="spouseEmployeeContributionPct" type="number" min="0" max="100" step="0.5"><span class="suffix">%</span></span><small>Montevallo does not contribute to its voluntary 403(b) or RSA-1 plans.</small></label>
+            <label class="field"><span>Voluntary plan type</span><span class="input-wrap select-wrap"><select id="spouseVoluntaryPlanType"><option value="403b">403(b)</option><option value="457b">RSA-1 457(b)</option></select></span></label>
+          </div>
+          <label class="switch-row" for="spouseAutoIncreaseEnabled"><span><strong>Automatically increase spouse contributions</strong><small>Subject to the applicable projected IRS limit.</small></span><span class="switch"><input id="spouseAutoIncreaseEnabled" type="checkbox"><span aria-hidden="true"></span></span></label>
+          <div class="field-grid field-grid-2 nested-fields" id="spouseAutoIncreaseFields" hidden>
+            <label class="field"><span>Increase each year</span><span class="input-wrap"><input id="spouseAutoIncreasePctPoints" type="number" min="0" max="25" step="0.5"><span class="suffix">pts</span></span></label>
+            <label class="field"><span>Stop increasing at</span><span class="input-wrap"><input id="spouseMaxEmployeeContributionPct" type="number" min="0" max="100" step="0.5"><span class="suffix">%</span></span></label>
+          </div>
+
+          <div class="social-security-panel">
+            <label class="switch-row embedded-switch" for="spouseSocialSecurityEnabled"><span><strong>Estimate spouse Social Security</strong><small>University of Montevallo employment is Social Security-covered, so this is modeled in addition to TRS.</small></span><span class="switch"><input id="spouseSocialSecurityEnabled" type="checkbox"><span aria-hidden="true"></span></span></label>
+            <div id="spouseSocialSecurityFields">
+              <div class="field-grid field-grid-2">
+                <label class="field"><span>Claim at age</span><span class="input-wrap"><input id="spouseSocialSecurityClaimAge" type="number" min="62" max="70" step="1"><span class="suffix">years</span></span></label>
+                <label class="field"><span>Career earnings started around age</span><span class="input-wrap"><input id="spouseSocialSecurityCareerStartAge" type="number" min="14" max="40" step="1"><span class="suffix">years</span></span></label>
+              </div>
+              <div class="rules-note"><strong id="spouseSocialSecurityEstimateInline">Estimating…</strong><span id="spouseSocialSecurityEstimateDetail"></span></div>
+            </div>
+          </div>
+
+          <div class="trs-panel">
+            <label class="switch-row embedded-switch" for="spouseTrsEnabled"><span><strong>Alabama TRS pension (University of Montevallo)</strong><small>Uses current Retirement Systems of Alabama Tier 1 / Tier 2 eligibility and maximum-benefit formulas.</small></span><span class="switch"><input id="spouseTrsEnabled" type="checkbox"><span aria-hidden="true"></span></span></label>
+            <div id="spouseTrsFields">
+              <div class="field-grid field-grid-2">
+                <label class="field"><span>TRS tier</span><span class="input-wrap select-wrap"><select id="spouseTrsTier"><option value="2">Tier 2 — first RSA-covered service 2013 or later</option><option value="1">Tier 1 — RSA service before 2013</option></select></span></label>
+                <label class="field"><span>Current creditable TRS service</span><span class="input-wrap"><input id="spouseTrsCurrentServiceYears" type="number" min="0" max="60" step="0.25"><span class="suffix">years</span></span><small>Use the service credit on the RSA statement; include purchased credit already on record.</small></label>
+              </div>
+              <div class="rules-note trs-result-note"><strong id="trsEstimateInline">Estimating Alabama TRS…</strong><span id="trsEstimateDetail"></span></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="divider"></div>
+        <div class="section-heading compact"><div><span class="step-number">3</span><div><h2>Household retirement lifestyle</h2><p>One spending target, offset by both spouses’ income streams as they begin.</p></div></div></div>
+        <div class="field-grid field-grid-2">
+          <label class="field"><span>Annual household spending goal</span><span class="input-wrap prefix-wrap"><span class="prefix">$</span><input id="desiredSpending" type="number" min="0" step="1000"></span><small>Entered in today’s purchasing power.</small></label>
+          <label class="field"><span>Other household retirement income</span><span class="input-wrap prefix-wrap"><span class="prefix">$</span><input id="otherRetirementIncome" type="number" min="0" step="1000"></span><small>Pensions or income not already modeled above.</small></label>
+        </div>
+
+        <details class="assumptions" id="assumptionsPanel">
+          <summary><span><strong>Investment &amp; inflation assumptions</strong><small>Shared household portfolio assumptions.</small></span><span class="chevron" aria-hidden="true">⌄</span></summary>
+          <div class="field-grid field-grid-3 assumptions-grid">
+            <label class="field"><span>Return while either spouse works</span><span class="input-wrap"><input id="preRetirementReturnPct" type="number" min="-50" max="50" step="0.1"><span class="suffix">%</span></span></label>
+            <label class="field"><span>Return after both retire</span><span class="input-wrap"><input id="retirementReturnPct" type="number" min="-50" max="50" step="0.1"><span class="suffix">%</span></span></label>
+            <label class="field"><span>Inflation</span><span class="input-wrap"><input id="inflationPct" type="number" min="-10" max="25" step="0.1"><span class="suffix">%</span></span></label>
+          </div>
+        </details>
+      </section>
+
+      <aside class="summary-panel" aria-live="polite">
+        <div class="status-card" id="statusCard">
+          <div class="status-topline"><span class="status-pill" id="statusPill">Calculating</span><span class="mode-label" id="summaryModeLabel">Today’s dollars</span></div>
+          <p class="status-kicker">Projected portfolio at first retirement</p>
+          <div class="hero-value" id="projectedNestEgg">—</div>
+          <div class="funding-row"><div class="funding-ring" id="fundingRing" aria-hidden="true"><span id="fundingPercent">—</span></div><div><strong id="statusHeadline">Checking your household plan…</strong><p id="statusExplanation">Change any input and the results update automatically.</p></div></div>
+          <div class="mini-stats"><div><span>Modeled target</span><strong id="requiredNestEgg">—</strong></div><div><span>Surplus / shortfall</span><strong id="surplusShortfall">—</strong></div></div>
+        </div>
+
+        <div class="income-card">
+          <p class="card-label">Household retirement income</p>
+          <div class="income-line"><span>Your Social Security</span><strong id="primarySocialSecurityResult">—</strong></div>
+          <div class="income-line" id="spouseSsIncomeRow" hidden><span>Spouse Social Security</span><strong id="spouseSocialSecurityResult">—</strong></div>
+          <div class="income-line" id="trsIncomeRow" hidden><span>Alabama TRS pension</span><strong id="trsIncomeResult">—</strong></div>
+          <div class="income-line"><span>Other retirement income</span><strong id="otherIncomeResult">—</strong></div>
+          <div class="income-line income-total"><span>Portfolio gap after all modeled income</span><strong id="portfolioGapResult">—</strong></div>
+        </div>
+
+        <div class="recommendation-card">
+          <p class="card-label">Rules &amp; limits</p>
+          <h3 id="rulesTitle">Current rules applied</h3>
+          <p id="rulesText">Social Security and IRS contribution limits are modeled automatically.</p>
+          <div class="recommendation-metric"><span id="irsLimitLabel">2026 employee deferral limit</span><strong id="irsLimitValue">—</strong></div>
+        </div>
+      </aside>
+    </div>
+
+    <section class="results-section" aria-labelledby="projectionHeading">
+      <div class="results-heading"><div><p class="eyebrow">The combined path</p><h2 id="projectionHeading">Household portfolio projection</h2><p id="chartDescription">Estimated combined invested balance while one or both spouses work and throughout retirement.</p></div><div class="legend"><span><i class="legend-line"></i>Portfolio</span><span><i class="legend-marker"></i>Retirement</span><span><i class="legend-ss"></i>Social Security</span></div></div>
+      <div class="chart-shell"><svg id="projectionChart" viewBox="0 0 1000 360" role="img" aria-labelledby="chartTitle chartDesc" preserveAspectRatio="none"><title id="chartTitle">Household retirement portfolio projection</title><desc id="chartDesc">Projected combined portfolio over time.</desc></svg></div>
+      <div class="chart-footer"><span id="chartFooterLeft">—</span><span id="chartFooterRight">—</span></div>
+    </section>
+
+    <section class="detail-grid" aria-label="Projection details">
+      <article class="detail-card"><p class="card-label">Retirement timing</p><h3 id="retirementDatesResult">—</h3><p id="retirementDatesDetail">—</p></article>
+      <article class="detail-card"><p class="card-label">Alabama TRS</p><h3 id="trsDetailResult">—</h3><p id="trsDetailText">Enable spouse/TRS to estimate.</p></article>
+      <article class="detail-card"><p class="card-label">IRS contribution caps</p><h3 id="contributionCapResult">—</h3><p id="contributionCapDetail">—</p></article>
+      <article class="detail-card"><p class="card-label">Real retirement return</p><h3 id="realReturnResult">—</h3><p>Portfolio return after the inflation assumption, once both spouses are retired.</p></article>
+    </section>
+
+    <footer class="disclaimer"><strong>Planning estimate, not financial or pension advice.</strong><span>Social Security is reconstructed from estimated earnings rather than an SSA earnings record. Alabama TRS uses current maximum-benefit formulas and projected salary/service; actual RSA service credit, final compensation, survivor-option reductions, sick-leave conversions, future legislative changes, taxes, health-insurance costs, RMDs, and special 403(b)/457 catch-up rules may change actual results.</span></footer>
+  </main>
+
+  <script src="model.js"></script>
+  <script src="household.js"></script>
+  <script src="app-household.js"></script>
+</body>
+</html>
