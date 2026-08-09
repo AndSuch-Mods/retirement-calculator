@@ -47,8 +47,8 @@
     return document.querySelector('[data-display-mode="real"]')?.classList.contains('is-active') !== false;
   }
 
-  function formatDate(d) {
-    return d instanceof Date && !Number.isNaN(d.getTime()) ? dateFmt.format(d) : '—';
+  function formatDate(date) {
+    return date instanceof Date && !Number.isNaN(date.getTime()) ? dateFmt.format(date) : '—';
   }
 
   function utcDate(year, month, day) {
@@ -71,8 +71,7 @@
     if (+anniversary === +end) return wholeYears;
 
     const nextAnniversary = utcDate(start.getUTCFullYear() + wholeYears + 1, start.getUTCMonth(), start.getUTCDate());
-    const fraction = (end - anniversary) / Math.max(nextAnniversary - anniversary, 1);
-    return wholeYears + fraction;
+    return wholeYears + (end - anniversary) / Math.max(nextAnniversary - anniversary, 1);
   }
 
   function firstRetirementFactor(result) {
@@ -112,7 +111,7 @@
     const nominalButton = document.querySelector('[data-display-mode="nominal"]');
     if (nominalButton) {
       nominalButton.textContent = 'First-retirement dollars';
-      nominalButton.title = 'Show amounts in nominal dollars at the date of the first retirement.';
+      nominalButton.title = 'Show summary amounts in nominal dollars at the date of the first retirement.';
     }
 
     if (!$('spendingGoalBreakdownResult')) {
@@ -145,25 +144,10 @@
       const style = document.createElement('style');
       style.id = 'incomeClarityStyle';
       style.textContent = `
-        .income-goal-line {
-          padding-top: 4px;
-          padding-bottom: 12px;
-          margin-bottom: 2px;
-          color: var(--ink);
-          font-weight: 750;
-          border-bottom: 2px solid var(--line-strong, #cad6d0);
-        }
-        .income-goal-line strong { color: var(--ink); font-size: 1.02em; }
-        .retirement-account-note {
-          margin-top: 12px;
-          padding: 11px 12px;
-          border-radius: 12px;
-          background: var(--brand-soft, #e8f3ef);
-          color: var(--muted, #66736d);
-          font-size: 0.76rem;
-          line-height: 1.45;
-        }
-        .retirement-account-note strong { color: var(--brand-strong, #075346); }
+        .income-goal-line{padding-top:4px;padding-bottom:12px;margin-bottom:2px;color:var(--ink);font-weight:750;border-bottom:2px solid var(--line-strong,#cad6d0)}
+        .income-goal-line strong{color:var(--ink);font-size:1.02em}
+        .retirement-account-note{margin-top:12px;padding:11px 12px;border-radius:12px;background:var(--brand-soft,#e8f3ef);color:var(--muted,#66736d);font-size:.76rem;line-height:1.45}
+        .retirement-account-note strong{color:var(--brand-strong,#075346)}
       `;
       document.head.appendChild(style);
     }
@@ -172,13 +156,12 @@
   function niceMax(value) {
     if (!(value > 0)) return 1;
     const exponent = Math.floor(Math.log10(value));
-    const base = Math.pow(10, exponent);
+    const base = 10 ** exponent;
     const normalized = value / base;
-    const nice = normalized <= 1 ? 1 : normalized <= 2 ? 2 : normalized <= 5 ? 5 : 10;
-    return nice * base;
+    return (normalized <= 1 ? 1 : normalized <= 2 ? 2 : normalized <= 5 ? 5 : 10) * base;
   }
 
-  function renderRealDollarChart(result) {
+  function renderNominalAccountChart(result) {
     const svg = $('projectionChart');
     if (!svg || !Array.isArray(result.timeline) || !result.timeline.length) return;
 
@@ -187,13 +170,10 @@
     const pad = { left: 72, right: 28, top: 28, bottom: 48 };
     const plotW = width - pad.left - pad.right;
     const plotH = height - pad.top - pad.bottom;
-    const data = result.timeline.map((point) => ({ ...point, value: point.realBalance }));
+    const data = result.timeline.map((point) => ({ ...point, value: point.nominalBalance }));
     const maxX = Math.max(...data.map((point) => point.yearsFromNow), 1);
-    const maxValue = niceMax(Math.max(
-      ...data.map((point) => point.value),
-      result.requiredNestEggReal || 0,
-      1
-    ) * 1.05);
+    const targetValue = result.requiredNestEggNominal || 0;
+    const maxValue = niceMax(Math.max(...data.map((point) => point.value), targetValue, 1) * 1.05);
     const x = (t) => pad.left + (t / maxX) * plotW;
     const y = (value) => pad.top + plotH - (Math.max(value, 0) / maxValue) * plotH;
 
@@ -228,12 +208,12 @@
     if (result.spouse && result.spouseSocialSecurity?.enabled) markers += marker(result.spouseSocialSecurity.claimDate, 'Spouse SS', '#6c91b1', '2 6');
 
     const targetX = x(Math.max(Model.yearsBetween(result.asOfDate, result.firstRetirementDate), 0));
-    const targetValue = result.requiredNestEggReal || 0;
 
-    svg.innerHTML = `<title id="chartTitle">Household retirement portfolio projection in today’s dollars</title><desc id="chartDesc">Combined portfolio shown consistently in inflation-adjusted today’s dollars, regardless of the summary display toggle.</desc><defs><linearGradient id="areaGradient" x1="0" x2="0" y1="0" y2="1"><stop offset="0%" stop-color="#0e6755" stop-opacity="0.24"/><stop offset="100%" stop-color="#0e6755" stop-opacity="0.02"/></linearGradient></defs>${grid.join('')}<polygon points="${area}" fill="url(#areaGradient)"/>${markers}${targetValue > 0 ? `<circle cx="${targetX}" cy="${y(targetValue)}" r="5" fill="#d8a34a" stroke="#fff" stroke-width="2"/><text x="${Math.min(targetX + 8, width - 130)}" y="${Math.max(y(targetValue) - 8, 18)}" fill="#8a5a10" font-size="11">Target ${compactMoney.format(targetValue)}</text>` : ''}<polyline points="${points}" fill="none" stroke="#0e6755" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>${ticks.join('')}`;
+    svg.innerHTML = `<title id="chartTitle">Projected retirement account balance in actual future dollars</title><desc id="chartDesc">The account balance compounds using the modeled nominal investment return. Inflation is not subtracted from account growth. After retirement, inflation can affect the balance indirectly because the modeled spending withdrawals rise over time.</desc><defs><linearGradient id="areaGradient" x1="0" x2="0" y1="0" y2="1"><stop offset="0%" stop-color="#0e6755" stop-opacity="0.24"/><stop offset="100%" stop-color="#0e6755" stop-opacity="0.02"/></linearGradient></defs>${grid.join('')}<polygon points="${area}" fill="url(#areaGradient)"/>${markers}${targetValue > 0 ? `<circle cx="${targetX}" cy="${y(targetValue)}" r="5" fill="#d8a34a" stroke="#fff" stroke-width="2"/><text x="${Math.min(targetX + 8, width - 130)}" y="${Math.max(y(targetValue) - 8, 18)}" fill="#8a5a10" font-size="11">Target ${compactMoney.format(targetValue)}</text>` : ''}<polyline points="${points}" fill="none" stroke="#0e6755" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>${ticks.join('')}`;
 
+    if ($('projectionHeading')) $('projectionHeading').textContent = 'Projected retirement account balance';
     if ($('chartDescription')) {
-      $('chartDescription').textContent = 'Estimated combined invested balance in today’s purchasing power. This chart stays in today’s dollars even when the summary is switched to first-retirement dollars.';
+      $('chartDescription').textContent = 'Actual modeled account dollars. Investment returns compound without subtracting inflation; after retirement, inflation only affects the chart through the size of modeled withdrawals.';
     }
     if ($('chartFooterLeft')) {
       $('chartFooterLeft').textContent = `First retirement: ${formatDate(result.firstRetirementDate)}${result.spouse ? `; both retired by ${formatDate(result.bothRetiredDate)}` : ''}.`;
@@ -241,7 +221,7 @@
     if ($('chartFooterRight')) {
       $('chartFooterRight').textContent = result.depletionDate
         ? `Portfolio reaches $0 around ${formatDate(result.depletionDate)}.`
-        : `Ending balance in today’s dollars: ${money.format(result.endingBalanceReal)}.`;
+        : `Ending account balance: ${money.format(result.endingBalanceNominal)}.`;
     }
   }
 
@@ -278,7 +258,7 @@
       note.innerHTML = `This is <strong>not an extra shortfall</strong>. It is the modeled withdrawal needed from ${sourceText}: about <strong>${money.format(withdrawal)}/yr</strong>, or <strong>${money.format(withdrawal / 12)}/mo</strong>, to bring total household income up to the spending goal.`;
     }
 
-    renderRealDollarChart(result);
+    renderNominalAccountChart(result);
   }
 
   function scheduleRender() {
