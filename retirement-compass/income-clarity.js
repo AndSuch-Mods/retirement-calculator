@@ -23,6 +23,15 @@
     currency: 'USD',
     maximumFractionDigits: 0
   });
+  const compactMoney = new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'USD',
+    notation: 'compact',
+    maximumFractionDigits: 1
+  });
+  const dateFmt = new Intl.DateTimeFormat('en-US', {
+    month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC'
+  });
 
   const $ = (id) => document.getElementById(id);
 
@@ -36,6 +45,10 @@
 
   function isRealMode() {
     return document.querySelector('[data-display-mode="real"]')?.classList.contains('is-active') !== false;
+  }
+
+  function formatDate(d) {
+    return d instanceof Date && !Number.isNaN(d.getTime()) ? dateFmt.format(d) : '—';
   }
 
   function utcDate(year, month, day) {
@@ -156,6 +169,82 @@
     }
   }
 
+  function niceMax(value) {
+    if (!(value > 0)) return 1;
+    const exponent = Math.floor(Math.log10(value));
+    const base = Math.pow(10, exponent);
+    const normalized = value / base;
+    const nice = normalized <= 1 ? 1 : normalized <= 2 ? 2 : normalized <= 5 ? 5 : 10;
+    return nice * base;
+  }
+
+  function renderRealDollarChart(result) {
+    const svg = $('projectionChart');
+    if (!svg || !Array.isArray(result.timeline) || !result.timeline.length) return;
+
+    const width = 1000;
+    const height = 360;
+    const pad = { left: 72, right: 28, top: 28, bottom: 48 };
+    const plotW = width - pad.left - pad.right;
+    const plotH = height - pad.top - pad.bottom;
+    const data = result.timeline.map((point) => ({ ...point, value: point.realBalance }));
+    const maxX = Math.max(...data.map((point) => point.yearsFromNow), 1);
+    const maxValue = niceMax(Math.max(
+      ...data.map((point) => point.value),
+      result.requiredNestEggReal || 0,
+      1
+    ) * 1.05);
+    const x = (t) => pad.left + (t / maxX) * plotW;
+    const y = (value) => pad.top + plotH - (Math.max(value, 0) / maxValue) * plotH;
+
+    const grid = [];
+    for (let i = 0; i <= 4; i += 1) {
+      const value = maxValue * (1 - i / 4);
+      const yy = pad.top + plotH * i / 4;
+      grid.push(`<line x1="${pad.left}" y1="${yy}" x2="${width - pad.right}" y2="${yy}" stroke="#dfe7e3"/>`);
+      grid.push(`<text x="${pad.left - 10}" y="${yy + 4}" text-anchor="end" fill="#74817b" font-size="12">${compactMoney.format(value)}</text>`);
+    }
+
+    const ticks = [];
+    const startYear = result.asOfDate.getUTCFullYear();
+    for (let i = 0; i <= 7; i += 1) {
+      const t = maxX * i / 7;
+      ticks.push(`<text x="${x(t)}" y="${height - 14}" text-anchor="middle" fill="#74817b" font-size="12">${startYear + Math.round(t)}</text>`);
+    }
+
+    const points = data.map((point) => `${x(point.yearsFromNow).toFixed(2)},${y(point.value).toFixed(2)}`).join(' ');
+    const area = `${x(0)},${pad.top + plotH} ${points} ${x(maxX)},${pad.top + plotH}`;
+
+    function marker(date, label, color, dash) {
+      const t = Model.yearsBetween(result.asOfDate, date);
+      if (t < 0 || t > maxX) return '';
+      const xx = x(t);
+      return `<line x1="${xx}" y1="${pad.top}" x2="${xx}" y2="${pad.top + plotH}" stroke="${color}" stroke-width="2" stroke-dasharray="${dash}"/><text x="${Math.min(xx + 7, width - 120)}" y="${pad.top + 14}" fill="${color}" font-size="11" font-weight="700">${label}</text>`;
+    }
+
+    let markers = marker(Model.addYears(result.primary.birth, result.primary.retirementAge), 'You retire', '#b37b22', '6 6');
+    if (result.spouse) markers += marker(Model.addYears(result.spouse.birth, result.spouse.retirementAge), 'Spouse retires', '#d8a34a', '6 6');
+    if (result.socialSecurity?.enabled) markers += marker(result.socialSecurity.claimDate, 'Your SS', '#4f7da6', '2 6');
+    if (result.spouse && result.spouseSocialSecurity?.enabled) markers += marker(result.spouseSocialSecurity.claimDate, 'Spouse SS', '#6c91b1', '2 6');
+
+    const targetX = x(Math.max(Model.yearsBetween(result.asOfDate, result.firstRetirementDate), 0));
+    const targetValue = result.requiredNestEggReal || 0;
+
+    svg.innerHTML = `<title id="chartTitle">Household retirement portfolio projection in today’s dollars</title><desc id="chartDesc">Combined portfolio shown consistently in inflation-adjusted today’s dollars, regardless of the summary display toggle.</desc><defs><linearGradient id="areaGradient" x1="0" x2="0" y1="0" y2="1"><stop offset="0%" stop-color="#0e6755" stop-opacity="0.24"/><stop offset="100%" stop-color="#0e6755" stop-opacity="0.02"/></linearGradient></defs>${grid.join('')}<polygon points="${area}" fill="url(#areaGradient)"/>${markers}${targetValue > 0 ? `<circle cx="${targetX}" cy="${y(targetValue)}" r="5" fill="#d8a34a" stroke="#fff" stroke-width="2"/><text x="${Math.min(targetX + 8, width - 130)}" y="${Math.max(y(targetValue) - 8, 18)}" fill="#8a5a10" font-size="11">Target ${compactMoney.format(targetValue)}</text>` : ''}<polyline points="${points}" fill="none" stroke="#0e6755" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>${ticks.join('')}`;
+
+    if ($('chartDescription')) {
+      $('chartDescription').textContent = 'Estimated combined invested balance in today’s purchasing power. This chart stays in today’s dollars even when the summary is switched to first-retirement dollars.';
+    }
+    if ($('chartFooterLeft')) {
+      $('chartFooterLeft').textContent = `First retirement: ${formatDate(result.firstRetirementDate)}${result.spouse ? `; both retired by ${formatDate(result.bothRetiredDate)}` : ''}.`;
+    }
+    if ($('chartFooterRight')) {
+      $('chartFooterRight').textContent = result.depletionDate
+        ? `Portfolio reaches $0 around ${formatDate(result.depletionDate)}.`
+        : `Ending balance in today’s dollars: ${money.format(result.endingBalanceReal)}.`;
+    }
+  }
+
   function render() {
     ensureIncomeBreakdown();
     const result = Model.analyze(readForm());
@@ -188,6 +277,8 @@
     if (note) {
       note.innerHTML = `This is <strong>not an extra shortfall</strong>. It is the modeled withdrawal needed from ${sourceText}: about <strong>${money.format(withdrawal)}/yr</strong>, or <strong>${money.format(withdrawal / 12)}/mo</strong>, to bring total household income up to the spending goal.`;
     }
+
+    renderRealDollarChart(result);
   }
 
   function scheduleRender() {
