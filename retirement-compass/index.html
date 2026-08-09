@@ -1,0 +1,262 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f4f7f6">
+  <meta name="description" content="A clear, year-by-year retirement planning calculator for savings, 401(k) contributions, employer match, spending, inflation, and investment returns.">
+  <title>Retirement Compass</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="#" aria-label="Retirement Compass home">
+      <span class="brand-mark" aria-hidden="true">RC</span>
+      <span>Retirement Compass</span>
+    </a>
+    <button class="button button-quiet" id="resetButton" type="button">Reset example</button>
+  </header>
+
+  <main class="page-shell">
+    <section class="intro" aria-labelledby="pageTitle">
+      <div>
+        <p class="eyebrow">Retirement planning without the spreadsheet fog</p>
+        <h1 id="pageTitle">See whether your current plan is on track.</h1>
+        <p class="intro-copy">Start with the numbers you know. The calculator handles salary growth, contributions, employer match, inflation, and retirement withdrawals year by year.</p>
+      </div>
+      <div class="currency-toggle" role="group" aria-label="Dollar display">
+        <button type="button" class="segment is-active" data-display-mode="real">Today’s dollars</button>
+        <button type="button" class="segment" data-display-mode="nominal">Future dollars</button>
+      </div>
+    </section>
+
+    <div id="validationBanner" class="validation-banner" role="alert" hidden></div>
+
+    <div class="workspace">
+      <section class="input-panel" aria-label="Retirement plan inputs">
+        <div class="section-heading">
+          <div>
+            <span class="step-number">1</span>
+            <div>
+              <h2>Your timeline</h2>
+              <p>When you want to retire, and how long the plan should cover.</p>
+            </div>
+          </div>
+        </div>
+        <div class="field-grid field-grid-3">
+          <label class="field">
+            <span>Current age</span>
+            <span class="input-wrap"><input id="currentAge" type="number" min="0" max="100" step="1" inputmode="numeric"><span class="suffix">years</span></span>
+          </label>
+          <label class="field">
+            <span>Retire at age</span>
+            <span class="input-wrap"><input id="retirementAge" type="number" min="1" max="110" step="1" inputmode="numeric"><span class="suffix">years</span></span>
+          </label>
+          <label class="field">
+            <span>Plan through age</span>
+            <span class="input-wrap"><input id="planThroughAge" type="number" min="1" max="120" step="1" inputmode="numeric"><span class="suffix">years</span></span>
+          </label>
+        </div>
+
+        <div class="divider"></div>
+
+        <div class="section-heading compact">
+          <div>
+            <span class="step-number">2</span>
+            <div>
+              <h2>What you have &amp; save</h2>
+              <p>Your current retirement balance, pay, contribution rate, and employer match.</p>
+            </div>
+          </div>
+        </div>
+        <div class="field-grid field-grid-2">
+          <label class="field">
+            <span>Current retirement savings</span>
+            <span class="input-wrap prefix-wrap"><span class="prefix">$</span><input id="currentSavings" type="number" min="0" step="1000" inputmode="decimal"></span>
+          </label>
+          <label class="field">
+            <span>Annual salary</span>
+            <span class="input-wrap prefix-wrap"><span class="prefix">$</span><input id="currentIncome" type="number" min="0" step="1000" inputmode="decimal"></span>
+          </label>
+          <label class="field">
+            <span>Your 401(k) contribution</span>
+            <span class="input-wrap"><input id="employeeContributionPct" type="number" min="0" max="100" step="0.5" inputmode="decimal"><span class="suffix">%</span></span>
+          </label>
+          <label class="field">
+            <span>Expected annual raise</span>
+            <span class="input-wrap"><input id="salaryGrowthPct" type="number" min="-20" max="50" step="0.1" inputmode="decimal"><span class="suffix">%</span></span>
+          </label>
+        </div>
+
+        <div class="match-box">
+          <div class="match-copy">
+            <strong>Employer match</strong>
+            <span>My employer matches</span>
+          </div>
+          <label class="inline-field"><input id="employerMatchRatePct" type="number" min="0" max="500" step="1" inputmode="decimal"><span>%</span></label>
+          <span>of what I contribute, up to</span>
+          <label class="inline-field"><input id="employerMatchCapPct" type="number" min="0" max="100" step="0.5" inputmode="decimal"><span>%</span></label>
+          <span>of salary.</span>
+        </div>
+
+        <label class="switch-row" for="autoIncreaseEnabled">
+          <span>
+            <strong>Automatically increase my contribution each year</strong>
+            <small>Useful if you plan to raise your savings rate as your pay grows.</small>
+          </span>
+          <span class="switch"><input id="autoIncreaseEnabled" type="checkbox"><span aria-hidden="true"></span></span>
+        </label>
+
+        <div class="field-grid field-grid-2 nested-fields" id="autoIncreaseFields" hidden>
+          <label class="field">
+            <span>Increase each year</span>
+            <span class="input-wrap"><input id="autoIncreasePctPoints" type="number" min="0" max="25" step="0.5" inputmode="decimal"><span class="suffix">pts</span></span>
+          </label>
+          <label class="field">
+            <span>Stop increasing at</span>
+            <span class="input-wrap"><input id="maxEmployeeContributionPct" type="number" min="0" max="100" step="0.5" inputmode="decimal"><span class="suffix">%</span></span>
+          </label>
+        </div>
+
+        <div class="divider"></div>
+
+        <div class="section-heading compact">
+          <div>
+            <span class="step-number">3</span>
+            <div>
+              <h2>Your retirement lifestyle</h2>
+              <p>Use today’s purchasing power. We’ll handle inflation automatically.</p>
+            </div>
+          </div>
+        </div>
+        <div class="field-grid field-grid-2">
+          <label class="field">
+            <span>Annual spending goal</span>
+            <span class="input-wrap prefix-wrap"><span class="prefix">$</span><input id="desiredSpending" type="number" min="0" step="1000" inputmode="decimal"></span>
+            <small>How much you want available to spend each year.</small>
+          </label>
+          <label class="field">
+            <span>Social Security, pension &amp; other income</span>
+            <span class="input-wrap prefix-wrap"><span class="prefix">$</span><input id="otherRetirementIncome" type="number" min="0" step="1000" inputmode="decimal"></span>
+            <small>Annual income that does not need to come from this portfolio.</small>
+          </label>
+        </div>
+
+        <details class="assumptions" id="assumptionsPanel">
+          <summary>
+            <span>
+              <strong>Investment &amp; inflation assumptions</strong>
+              <small>Review these when you want to stress-test the plan.</small>
+            </span>
+            <span class="chevron" aria-hidden="true">⌄</span>
+          </summary>
+          <div class="field-grid field-grid-3 assumptions-grid">
+            <label class="field">
+              <span>Return before retirement</span>
+              <span class="input-wrap"><input id="preRetirementReturnPct" type="number" min="-50" max="50" step="0.1" inputmode="decimal"><span class="suffix">%</span></span>
+            </label>
+            <label class="field">
+              <span>Return in retirement</span>
+              <span class="input-wrap"><input id="retirementReturnPct" type="number" min="-50" max="50" step="0.1" inputmode="decimal"><span class="suffix">%</span></span>
+            </label>
+            <label class="field">
+              <span>Inflation</span>
+              <span class="input-wrap"><input id="inflationPct" type="number" min="-10" max="25" step="0.1" inputmode="decimal"><span class="suffix">%</span></span>
+            </label>
+          </div>
+        </details>
+      </section>
+
+      <aside class="summary-panel" aria-live="polite">
+        <div class="status-card" id="statusCard">
+          <div class="status-topline">
+            <span class="status-pill" id="statusPill">Calculating</span>
+            <span class="mode-label" id="summaryModeLabel">Today’s dollars</span>
+          </div>
+          <p class="status-kicker">Projected at retirement</p>
+          <div class="hero-value" id="projectedNestEgg">—</div>
+          <div class="funding-row">
+            <div class="funding-ring" id="fundingRing" aria-hidden="true"><span id="fundingPercent">—</span></div>
+            <div>
+              <strong id="statusHeadline">Checking your plan…</strong>
+              <p id="statusExplanation">Change any input and the results update automatically.</p>
+            </div>
+          </div>
+          <div class="mini-stats">
+            <div><span>Modeled target</span><strong id="requiredNestEgg">—</strong></div>
+            <div><span>Surplus / shortfall</span><strong id="surplusShortfall">—</strong></div>
+          </div>
+        </div>
+
+        <div class="recommendation-card">
+          <p class="card-label">What this means</p>
+          <h3 id="recommendationTitle">Your plan summary</h3>
+          <p id="recommendationText">Enter your assumptions to see a recommendation.</p>
+          <div class="recommendation-metric" id="recommendationMetric" hidden>
+            <span id="recommendationMetricLabel"></span>
+            <strong id="recommendationMetricValue"></strong>
+          </div>
+        </div>
+
+        <div class="income-card">
+          <p class="card-label">Retirement income</p>
+          <div class="income-line"><span>Your spending goal</span><strong id="spendingGoalResult">—</strong></div>
+          <div class="income-line"><span>Other income</span><strong id="otherIncomeResult">—</strong></div>
+          <div class="income-line"><span>Portfolio needs to cover</span><strong id="portfolioGapResult">—</strong></div>
+          <div class="income-line income-total"><span>Portfolio can support</span><strong id="sustainableIncomeResult">—</strong></div>
+        </div>
+      </aside>
+    </div>
+
+    <section class="results-section" aria-labelledby="projectionHeading">
+      <div class="results-heading">
+        <div>
+          <p class="eyebrow">The full path</p>
+          <h2 id="projectionHeading">Portfolio projection by age</h2>
+          <p id="chartDescription">Estimated year-end balance while working and while drawing retirement income.</p>
+        </div>
+        <div class="legend" aria-label="Chart legend">
+          <span><i class="legend-line"></i>Portfolio</span>
+          <span><i class="legend-marker"></i>Retirement</span>
+        </div>
+      </div>
+      <div class="chart-shell">
+        <svg id="projectionChart" viewBox="0 0 1000 360" role="img" aria-labelledby="chartTitle chartDesc" preserveAspectRatio="none">
+          <title id="chartTitle">Retirement portfolio projection</title>
+          <desc id="chartDesc">A line chart showing projected portfolio value by age.</desc>
+        </svg>
+      </div>
+      <div class="chart-footer">
+        <span id="chartFooterLeft">—</span>
+        <span id="chartFooterRight">—</span>
+      </div>
+    </section>
+
+    <section class="detail-grid" aria-label="Projection details">
+      <article class="detail-card">
+        <p class="card-label">Savings engine</p>
+        <h3 id="contributionRateResult">—</h3>
+        <p id="contributionDetailResult">—</p>
+      </article>
+      <article class="detail-card">
+        <p class="card-label">Years to compound</p>
+        <h3 id="yearsToRetirementResult">—</h3>
+        <p id="retirementDurationResult">—</p>
+      </article>
+      <article class="detail-card">
+        <p class="card-label">Real retirement return</p>
+        <h3 id="realReturnResult">—</h3>
+        <p>Return after accounting for the inflation assumption.</p>
+      </article>
+    </section>
+
+    <footer class="disclaimer">
+      <strong>Planning estimate, not financial advice.</strong>
+      <span>This model uses constant annual return and inflation assumptions, annual year-end contributions/withdrawals, and does not model taxes, investment fees, IRS contribution limits, RMDs, or changes to Social Security benefits.</span>
+    </footer>
+  </main>
+
+  <script src="model.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
