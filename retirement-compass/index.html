@@ -136,10 +136,37 @@
             <small>How much you want available to spend each year.</small>
           </label>
           <label class="field">
-            <span>Social Security, pension &amp; other income</span>
+            <span>Pension &amp; other retirement income</span>
             <span class="input-wrap prefix-wrap"><span class="prefix">$</span><input id="otherRetirementIncome" type="number" min="0" step="1000" inputmode="decimal"></span>
-            <small>Annual income that does not need to come from this portfolio.</small>
+            <small>Annual income excluding Social Security, entered in today’s dollars.</small>
           </label>
+        </div>
+
+        <label class="switch-row social-security-toggle" for="socialSecurityEnabled">
+          <span>
+            <strong>Estimate Social Security automatically</strong>
+            <small>Uses current Social Security rules and an estimated 35-year indexed earnings history.</small>
+          </span>
+          <span class="switch"><input id="socialSecurityEnabled" type="checkbox"><span aria-hidden="true"></span></span>
+        </label>
+
+        <div class="social-security-panel" id="socialSecurityFields">
+          <div class="field-grid field-grid-2">
+            <label class="field">
+              <span>Claim Social Security at age</span>
+              <span class="input-wrap"><input id="socialSecurityClaimAge" type="number" min="62" max="70" step="1" inputmode="numeric"><span class="suffix">years</span></span>
+              <small>Current law allows retirement benefits from 62 through 70, with permanent age adjustments.</small>
+            </label>
+            <label class="field">
+              <span>Career earnings started around age</span>
+              <span class="input-wrap"><input id="socialSecurityCareerStartAge" type="number" min="14" max="40" step="1" inputmode="numeric"><span class="suffix">years</span></span>
+              <small>Used to estimate the 35 years of earnings Social Security uses.</small>
+            </label>
+          </div>
+          <div class="rules-note">
+            <strong id="socialSecurityEstimateInline">Estimating Social Security…</strong>
+            <span id="socialSecurityEstimateDetail">The estimate updates automatically with salary, raises, retirement age, claim age, and inflation.</span>
+          </div>
         </div>
 
         <details class="assumptions" id="assumptionsPanel">
@@ -201,8 +228,10 @@
         <div class="income-card">
           <p class="card-label">Retirement income</p>
           <div class="income-line"><span>Your spending goal</span><strong id="spendingGoalResult">—</strong></div>
-          <div class="income-line"><span>Other income</span><strong id="otherIncomeResult">—</strong></div>
-          <div class="income-line"><span>Portfolio needs to cover</span><strong id="portfolioGapResult">—</strong></div>
+          <div class="income-line"><span>Estimated Social Security</span><strong id="socialSecurityIncomeResult">—</strong></div>
+          <div class="income-line"><span>Pension &amp; other income</span><strong id="otherIncomeResult">—</strong></div>
+          <div class="income-line"><span>Portfolio need before Social Security</span><strong id="portfolioGapBeforeSsResult">—</strong></div>
+          <div class="income-line"><span>Portfolio need after Social Security</span><strong id="portfolioGapResult">—</strong></div>
           <div class="income-line income-total"><span>Portfolio can support</span><strong id="sustainableIncomeResult">—</strong></div>
         </div>
       </aside>
@@ -218,6 +247,7 @@
         <div class="legend" aria-label="Chart legend">
           <span><i class="legend-line"></i>Portfolio</span>
           <span><i class="legend-marker"></i>Retirement</span>
+          <span><i class="legend-ss"></i>Social Security</span>
         </div>
       </div>
       <div class="chart-shell">
@@ -248,11 +278,21 @@
         <h3 id="realReturnResult">—</h3>
         <p>Return after accounting for the inflation assumption.</p>
       </article>
+      <article class="detail-card">
+        <p class="card-label">Social Security estimate</p>
+        <h3 id="socialSecurityDetailResult">—</h3>
+        <p id="socialSecurityDetailCopy">—</p>
+      </article>
+      <article class="detail-card">
+        <p class="card-label">IRS contribution limits</p>
+        <h3 id="irsLimitResult">—</h3>
+        <p id="irsLimitDetailResult">—</p>
+      </article>
     </section>
 
     <footer class="disclaimer">
       <strong>Planning estimate, not financial advice.</strong>
-      <span>This model uses constant annual return and inflation assumptions, annual year-end contributions/withdrawals, and does not model taxes, investment fees, IRS contribution limits, RMDs, or changes to Social Security benefits.</span>
+      <span>This model applies current 401(k) limits and an estimated Social Security benefit under current law, then projects future statutory limits from historical growth. It does not model taxes, investment fees, RMDs, plan-specific restrictions, spouse/survivor benefits, or future legislative changes.</span>
     </footer>
   </main>
 
