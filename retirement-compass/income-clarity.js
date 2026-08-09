@@ -7,9 +7,7 @@
   const HISTORICAL_INFLATION_PCT = 3.07;
   const HISTORICAL_INFLATION_PERIOD = '1928–2025 CPI-U CAGR';
 
-  if (Model.DEFAULTS) {
-    Model.DEFAULTS = Object.freeze({ ...Model.DEFAULTS, inflationPct: HISTORICAL_INFLATION_PCT });
-  }
+  Model.DEFAULTS = Object.freeze({ ...Model.DEFAULTS, inflationPct: HISTORICAL_INFLATION_PCT });
   if (Model.HISTORICAL_ASSUMPTIONS) {
     Model.HISTORICAL_ASSUMPTIONS = Object.freeze({
       ...Model.HISTORICAL_ASSUMPTIONS,
@@ -19,25 +17,20 @@
   }
 
   const money = new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'USD',
-    maximumFractionDigits: 0
+    style: 'currency', currency: 'USD', maximumFractionDigits: 0
   });
   const compactMoney = new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'USD',
-    notation: 'compact',
-    maximumFractionDigits: 1
+    style: 'currency', currency: 'USD', notation: 'compact', maximumFractionDigits: 1
   });
   const dateFmt = new Intl.DateTimeFormat('en-US', {
     month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC'
   });
-
   const $ = (id) => document.getElementById(id);
 
   function readForm() {
     const data = {};
     document.querySelectorAll('input[id], select[id]').forEach((el) => {
+      if (el.id === 'projectionYearSlider') return;
       data[el.id] = el.type === 'checkbox' ? el.checked : el.value;
     });
     return data;
@@ -91,8 +84,7 @@
       input.dispatchEvent(new Event('input', { bubbles: true }));
     }
 
-    const box = $('historicalBaselineBox');
-    const inflationCard = box?.querySelector('.historical-values > div:nth-child(3)');
+    const inflationCard = $('historicalBaselineBox')?.querySelector('.historical-values > div:nth-child(3)');
     if (inflationCard) {
       const value = inflationCard.querySelector('b');
       const detail = inflationCard.querySelectorAll('span')[1];
@@ -121,18 +113,19 @@
       label?.insertAdjacentElement('afterend', row);
     }
 
-    const primaryRow = $('primarySocialSecurityResult')?.closest('.income-line');
-    const spouseRow = $('spouseSocialSecurityResult')?.closest('.income-line');
-    const trsRow = $('trsIncomeResult')?.closest('.income-line');
-    const otherRow = $('otherIncomeResult')?.closest('.income-line');
+    const rows = [
+      ['primarySocialSecurityResult', 'Less: Your Social Security'],
+      ['spouseSocialSecurityResult', 'Less: Spouse Social Security'],
+      ['trsIncomeResult', 'Less: Alabama TRS pension'],
+      ['otherIncomeResult', 'Less: Other retirement income'],
+      ['portfolioGapResult', 'Needed from retirement accounts']
+    ];
+    rows.forEach(([id, text]) => {
+      const span = $(id)?.closest('.income-line')?.querySelector('span');
+      if (span) span.textContent = text;
+    });
+
     const portfolioRow = $('portfolioGapResult')?.closest('.income-line');
-
-    if (primaryRow) primaryRow.querySelector('span').textContent = 'Less: Your Social Security';
-    if (spouseRow) spouseRow.querySelector('span').textContent = 'Less: Spouse Social Security';
-    if (trsRow) trsRow.querySelector('span').textContent = 'Less: Alabama TRS pension';
-    if (otherRow) otherRow.querySelector('span').textContent = 'Less: Other retirement income';
-    if (portfolioRow) portfolioRow.querySelector('span').textContent = 'Needed from retirement accounts';
-
     if (!$('retirementAccountWithdrawalNote')) {
       const note = document.createElement('div');
       note.id = 'retirementAccountWithdrawalNote';
@@ -195,11 +188,11 @@
     const points = data.map((point) => `${x(point.yearsFromNow).toFixed(2)},${y(point.value).toFixed(2)}`).join(' ');
     const area = `${x(0)},${pad.top + plotH} ${points} ${x(maxX)},${pad.top + plotH}`;
 
-    function marker(date, label, color, dash) {
+    function marker(date, text, color, dash) {
       const t = Model.yearsBetween(result.asOfDate, date);
       if (t < 0 || t > maxX) return '';
       const xx = x(t);
-      return `<line x1="${xx}" y1="${pad.top}" x2="${xx}" y2="${pad.top + plotH}" stroke="${color}" stroke-width="2" stroke-dasharray="${dash}"/><text x="${Math.min(xx + 7, width - 120)}" y="${pad.top + 14}" fill="${color}" font-size="11" font-weight="700">${label}</text>`;
+      return `<line x1="${xx}" y1="${pad.top}" x2="${xx}" y2="${pad.top + plotH}" stroke="${color}" stroke-width="2" stroke-dasharray="${dash}"/><text x="${Math.min(xx + 7, width - 120)}" y="${pad.top + 14}" fill="${color}" font-size="11" font-weight="700">${text}</text>`;
     }
 
     let markers = marker(Model.addYears(result.primary.birth, result.primary.retirementAge), 'You retire', '#b37b22', '6 6');
@@ -208,16 +201,11 @@
     if (result.spouse && result.spouseSocialSecurity?.enabled) markers += marker(result.spouseSocialSecurity.claimDate, 'Spouse SS', '#6c91b1', '2 6');
 
     const targetX = x(Math.max(Model.yearsBetween(result.asOfDate, result.firstRetirementDate), 0));
-
     svg.innerHTML = `<title id="chartTitle">Projected retirement account balance in actual future dollars</title><desc id="chartDesc">The account balance compounds using the modeled nominal investment return. Inflation is not subtracted from account growth. After retirement, inflation can affect the balance indirectly because the modeled spending withdrawals rise over time.</desc><defs><linearGradient id="areaGradient" x1="0" x2="0" y1="0" y2="1"><stop offset="0%" stop-color="#0e6755" stop-opacity="0.24"/><stop offset="100%" stop-color="#0e6755" stop-opacity="0.02"/></linearGradient></defs>${grid.join('')}<polygon points="${area}" fill="url(#areaGradient)"/>${markers}${targetValue > 0 ? `<circle cx="${targetX}" cy="${y(targetValue)}" r="5" fill="#d8a34a" stroke="#fff" stroke-width="2"/><text x="${Math.min(targetX + 8, width - 130)}" y="${Math.max(y(targetValue) - 8, 18)}" fill="#8a5a10" font-size="11">Target ${compactMoney.format(targetValue)}</text>` : ''}<polyline points="${points}" fill="none" stroke="#0e6755" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>${ticks.join('')}`;
 
     if ($('projectionHeading')) $('projectionHeading').textContent = 'Projected retirement account balance';
-    if ($('chartDescription')) {
-      $('chartDescription').textContent = 'Actual modeled account dollars. Investment returns compound without subtracting inflation; after retirement, inflation only affects the chart through the size of modeled withdrawals.';
-    }
-    if ($('chartFooterLeft')) {
-      $('chartFooterLeft').textContent = `First retirement: ${formatDate(result.firstRetirementDate)}${result.spouse ? `; both retired by ${formatDate(result.bothRetiredDate)}` : ''}.`;
-    }
+    if ($('chartDescription')) $('chartDescription').textContent = 'Actual modeled account dollars. Investment returns compound without subtracting inflation; after retirement, inflation only affects the chart through the size of modeled withdrawals.';
+    if ($('chartFooterLeft')) $('chartFooterLeft').textContent = `First retirement: ${formatDate(result.firstRetirementDate)}${result.spouse ? `; both retired by ${formatDate(result.bothRetiredDate)}` : ''}.`;
     if ($('chartFooterRight')) {
       $('chartFooterRight').textContent = result.depletionDate
         ? `Portfolio reaches $0 around ${formatDate(result.depletionDate)}.`
@@ -246,8 +234,7 @@
     if ($('otherIncomeResult')) $('otherIncomeResult').textContent = `${money.format(other)}/yr`;
 
     const spouseInvestmentPool = Boolean(
-      result.spouse &&
-      (Number(result.input.spouseCurrentSavings) > 0 || Number(result.input.spouseEmployeeContributionPct) > 0)
+      result.spouse && (Number(result.input.spouseCurrentSavings) > 0 || Number(result.input.spouseEmployeeContributionPct) > 0)
     );
     const sourceText = spouseInvestmentPool
       ? 'your combined invested retirement accounts (your 401(k) plus the spouse voluntary retirement account)'
@@ -262,13 +249,22 @@
   }
 
   function scheduleRender() {
-    window.requestAnimationFrame(render);
+    requestAnimationFrame(render);
+  }
+
+  function loadChartScrubber() {
+    if (document.querySelector('script[data-retirement-chart-scrubber]')) return;
+    const script = document.createElement('script');
+    script.src = 'chart-scrubber.js';
+    script.dataset.retirementChartScrubber = 'true';
+    document.head.appendChild(script);
   }
 
   function init() {
     ensureIncomeBreakdown();
     applyHistoricalInflationBaseline();
     render();
+    loadChartScrubber();
 
     const baselineToggle = $('historicalBaselineEnabled');
     baselineToggle?.addEventListener('change', () => {
