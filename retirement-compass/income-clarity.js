@@ -24,8 +24,32 @@
     return document.querySelector('[data-display-mode="real"]')?.classList.contains('is-active') !== false;
   }
 
+  function utcDate(year, month, day) {
+    const d = new Date(Date.UTC(year, month, day));
+    if (d.getUTCMonth() !== month) d.setUTCDate(0);
+    return d;
+  }
+
+  function exactCalendarYearsBetween(start, end) {
+    if (!(start instanceof Date) || !(end instanceof Date) || Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return 0;
+    if (+start === +end) return 0;
+    if (end < start) return -exactCalendarYearsBetween(end, start);
+
+    let wholeYears = end.getUTCFullYear() - start.getUTCFullYear();
+    let anniversary = utcDate(start.getUTCFullYear() + wholeYears, start.getUTCMonth(), start.getUTCDate());
+    if (anniversary > end) {
+      wholeYears -= 1;
+      anniversary = utcDate(start.getUTCFullYear() + wholeYears, start.getUTCMonth(), start.getUTCDate());
+    }
+    if (+anniversary === +end) return wholeYears;
+
+    const nextAnniversary = utcDate(start.getUTCFullYear() + wholeYears + 1, start.getUTCMonth(), start.getUTCDate());
+    const fraction = (end - anniversary) / Math.max(nextAnniversary - anniversary, 1);
+    return wholeYears + fraction;
+  }
+
   function firstRetirementFactor(result) {
-    const years = Math.max(Model.yearsBetween(result.asOfDate, result.firstRetirementDate), 0);
+    const years = Math.max(exactCalendarYearsBetween(result.asOfDate, result.firstRetirementDate), 0);
     return Math.pow(1 + result.input.inflationPct / 100, years);
   }
 
@@ -39,6 +63,12 @@
 
     const label = card.querySelector('.card-label');
     if (label) label.textContent = 'How your retirement spending is funded';
+
+    const nominalButton = document.querySelector('[data-display-mode="nominal"]');
+    if (nominalButton) {
+      nominalButton.textContent = 'First-retirement dollars';
+      nominalButton.title = 'Show amounts in nominal dollars at the date of the first retirement.';
+    }
 
     if (!$('spendingGoalBreakdownResult')) {
       const row = document.createElement('div');
@@ -101,13 +131,18 @@
 
     const spending = displayAnnual(result.input.desiredSpending, result);
     const withdrawal = displayAnnual(result.portfolioGapAfterAllIncomeReal, result);
+    const primarySs = displayAnnual(result.socialSecurity?.annualBenefitReal || 0, result);
+    const spouseSs = displayAnnual(result.spouseSocialSecurity?.annualBenefitReal || 0, result);
+    const trsReal = result.trs?.eligible ? result.trs.annualBenefitRealAtStart : 0;
+    const trs = displayAnnual(trsReal, result);
+    const other = displayAnnual(result.input.otherRetirementIncome || 0, result);
 
-    if ($('spendingGoalBreakdownResult')) {
-      $('spendingGoalBreakdownResult').textContent = `${money.format(spending)}/yr`;
-    }
-    if ($('portfolioGapResult')) {
-      $('portfolioGapResult').textContent = `${money.format(withdrawal)}/yr`;
-    }
+    if ($('spendingGoalBreakdownResult')) $('spendingGoalBreakdownResult').textContent = `${money.format(spending)}/yr`;
+    if ($('portfolioGapResult')) $('portfolioGapResult').textContent = `${money.format(withdrawal)}/yr`;
+    if ($('primarySocialSecurityResult')) $('primarySocialSecurityResult').textContent = `${money.format(primarySs)}/yr`;
+    if ($('spouseSocialSecurityResult') && result.spouse) $('spouseSocialSecurityResult').textContent = `${money.format(spouseSs)}/yr`;
+    if ($('trsIncomeResult') && result.trs?.eligible) $('trsIncomeResult').textContent = `${money.format(trs)}/yr`;
+    if ($('otherIncomeResult')) $('otherIncomeResult').textContent = `${money.format(other)}/yr`;
 
     const spouseInvestmentPool = Boolean(
       result.spouse &&
