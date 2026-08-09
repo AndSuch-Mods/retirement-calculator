@@ -131,7 +131,7 @@
     const factor = firstRetirementFactor(result);
     const spending = todayMode ? result.input.desiredSpending : result.input.desiredSpending * factor;
     const withdrawal = todayMode ? result.portfolioGapAfterAllIncomeReal : result.portfolioGapAfterAllIncomeReal * factor;
-    const other = todayMode ? result.input.otherRetirementIncome / factor : result.input.otherRetirementIncome;
+    const other = result.input.otherRetirementIncome;
 
     const primarySs = result.socialSecurity?.enabled
       ? (todayMode ? result.socialSecurity.annualBenefitReal : result.socialSecurity.annualBenefitNominalAtClaim)
@@ -155,7 +155,7 @@
     rowLabel('primarySocialSecurityResult', todayMode ? 'Your Social Security' : 'Your Social Security (at claim)');
     rowLabel('spouseSocialSecurityResult', todayMode ? 'Spouse Social Security' : 'Spouse Social Security (at claim)');
     rowLabel('trsIncomeResult', todayMode ? 'Alabama TRS pension' : 'Alabama TRS pension (at start)');
-    rowLabel('otherIncomeResult', todayMode ? 'Other retirement income' : 'Other retirement income (entered amount)');
+    rowLabel('otherIncomeResult', 'Other retirement income (entered amount)');
     rowLabel('portfolioGapResult', todayMode ? 'Needed from retirement accounts' : 'Needed from retirement accounts (future equivalent)');
 
     if ($('socialSecurityEstimateInline') && result.socialSecurity?.enabled) {
@@ -177,9 +177,9 @@
     const note = $('retirementAccountWithdrawalNote');
     if (note) {
       if (todayMode) {
-        note.innerHTML = `After all recurring retirement income is active, the model needs about <strong>${money.format(withdrawal)}/yr</strong> from invested retirement accounts in today’s buying power. The “other income” amount is converted back to today’s buying power only for this display; in the cash-flow model it remains the fixed future dollar amount you entered.`;
+        note.innerHTML = `After all recurring retirement income is active, the model needs about <strong>${money.format(withdrawal)}/yr</strong> from invested retirement accounts in today’s buying power. “Other retirement income” is intentionally shown exactly as entered and is never inflation-increased; the calculator only converts it internally when a common purchasing-power basis is needed for the cash-flow math.`;
       } else {
-        note.innerHTML = `The retirement-account need is shown as a <strong>future-dollar equivalent at first retirement</strong>. Social Security and TRS are shown as the projected nominal amounts when each benefit actually starts, while “other income” is shown exactly as entered. Because those income streams can start in different years, the future-mode rows are not all expressed at one common date.`;
+        note.innerHTML = `The retirement-account need is shown as a <strong>future-dollar equivalent at first retirement</strong>. Social Security and TRS are shown as the projected nominal amounts when each benefit actually starts, while “other income” is shown exactly as entered and remains fixed. Because those income streams can start in different years, the future-mode rows are not all expressed at one common date.`;
       }
     }
   }
