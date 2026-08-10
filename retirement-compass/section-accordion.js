@@ -140,7 +140,7 @@
       'Personal details, savings, contributions, employer match, and Social Security.',
       youNodes,
       youHeading,
-      true
+      false
     );
 
     const spouseHeading = spouseFields.querySelector('.section-heading');
@@ -200,7 +200,15 @@
       });
     });
 
-    function syncSpouseState({ openSpouse = false, reset = false } = {}) {
+    function collapseAll() {
+      syncing = true;
+      sections.forEach((section) => {
+        if (section) section.open = false;
+      });
+      syncing = false;
+    }
+
+    function syncSpouseState({ reset = false } = {}) {
       const enabled = Boolean(spouseEnabled?.checked);
       spouseSection.hidden = !enabled;
       setStep(spouseSection, 2);
@@ -209,27 +217,14 @@
       const originalLifestyleStep = lifestyleHeading?.querySelector('.step-number');
       if (originalLifestyleStep) originalLifestyleStep.textContent = enabled ? '3' : '2';
 
-      if (!enabled) {
-        spouseSection.open = false;
-        if (reset) {
-          youSection.open = true;
-          lifestyleSection.open = false;
-        }
-        return;
-      }
-
-      if (openSpouse) {
-        syncing = true;
-        spouseSection.open = true;
-        closeOthers(spouseSection, sections);
-        syncing = false;
-      }
+      if (!enabled) spouseSection.open = false;
+      if (reset) collapseAll();
     }
 
     syncSpouseState({ reset: true });
 
     spouseEnabled?.addEventListener('change', () => {
-      syncSpouseState({ openSpouse: spouseEnabled.checked });
+      syncSpouseState();
     });
 
     $('resetButton')?.addEventListener('click', () => {
