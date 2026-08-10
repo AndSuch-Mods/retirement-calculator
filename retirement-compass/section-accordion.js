@@ -77,13 +77,14 @@
     ) || null;
   }
 
-  function createSection(id, step, title, subtitle, nodes, sourceHeading, open) {
+  function createSection(id, step, title, subtitle, nodes, sourceHeading) {
     if (!nodes.length) return null;
 
     const details = document.createElement('details');
     details.id = id;
     details.className = 'planner-section';
-    details.open = Boolean(open);
+    details.removeAttribute('open');
+    details.open = false;
 
     const summary = document.createElement('summary');
     summary.className = 'planner-section-summary';
@@ -139,8 +140,7 @@
       'You',
       'Personal details, savings, contributions, employer match, and Social Security.',
       youNodes,
-      youHeading,
-      false
+      youHeading
     );
 
     const spouseHeading = spouseFields.querySelector('.section-heading');
@@ -150,8 +150,7 @@
       'Spouse',
       'Separate retirement savings, Social Security, and Alabama TRS assumptions.',
       [spouseFields],
-      spouseHeading,
-      false
+      spouseHeading
     );
 
     const lifestyleSection = createSection(
@@ -160,14 +159,13 @@
       'Household retirement lifestyle',
       'Spending goal, other retirement income, investment return, and inflation assumptions.',
       lifestyleNodes,
-      lifestyleHeading,
-      false
+      lifestyleHeading
     );
 
     firstDivider?.remove();
     secondDivider?.remove();
 
-    return { youSection, spouseSection, lifestyleSection, spouseToggle, spouseFields, lifestyleHeading };
+    return { youSection, spouseSection, lifestyleSection, lifestyleHeading };
   }
 
   function setStep(section, value) {
@@ -175,10 +173,10 @@
     if (badge) badge.textContent = String(value);
   }
 
-  function closeOthers(current, sections) {
-    sections.forEach((section) => {
-      if (section && section !== current && !section.hidden && section.open) section.open = false;
-    });
+  function forceClosed(section) {
+    if (!section) return;
+    section.open = false;
+    section.removeAttribute('open');
   }
 
   function init() {
@@ -191,24 +189,28 @@
     const sections = [youSection, spouseSection, lifestyleSection].filter(Boolean);
     let syncing = false;
 
+    function collapseAll() {
+      syncing = true;
+      sections.forEach(forceClosed);
+      syncing = false;
+    }
+
+    function closeOthers(current) {
+      sections.forEach((section) => {
+        if (section && section !== current && !section.hidden) forceClosed(section);
+      });
+    }
+
     sections.forEach((section) => {
       section.addEventListener('toggle', () => {
         if (syncing || !section.open) return;
         syncing = true;
-        closeOthers(section, sections);
+        closeOthers(section);
         syncing = false;
       });
     });
 
-    function collapseAll() {
-      syncing = true;
-      sections.forEach((section) => {
-        if (section) section.open = false;
-      });
-      syncing = false;
-    }
-
-    function syncSpouseState({ reset = false } = {}) {
+    function syncSpouseState({ reset = false, spouseChanged = false } = {}) {
       const enabled = Boolean(spouseEnabled?.checked);
       spouseSection.hidden = !enabled;
       setStep(spouseSection, 2);
@@ -217,18 +219,28 @@
       const originalLifestyleStep = lifestyleHeading?.querySelector('.step-number');
       if (originalLifestyleStep) originalLifestyleStep.textContent = enabled ? '3' : '2';
 
-      if (!enabled) spouseSection.open = false;
+      // The spouse toggle only controls whether the collapsed spouse section exists.
+      // It must never open that section as a side effect.
+      if (spouseChanged || !enabled) forceClosed(spouseSection);
       if (reset) collapseAll();
     }
 
+    // Force the initial state closed more than once so browser state restoration
+    // or later calculator initialization cannot reopen a section on page load.
     syncSpouseState({ reset: true });
+    requestAnimationFrame(collapseAll);
+    setTimeout(collapseAll, 0);
+    setTimeout(collapseAll, 80);
 
     spouseEnabled?.addEventListener('change', () => {
-      syncSpouseState();
+      syncSpouseState({ spouseChanged: true });
+      requestAnimationFrame(() => forceClosed(spouseSection));
+      setTimeout(() => forceClosed(spouseSection), 0);
     });
 
     $('resetButton')?.addEventListener('click', () => {
       setTimeout(() => syncSpouseState({ reset: true }), 0);
+      setTimeout(collapseAll, 80);
     });
   }
 
