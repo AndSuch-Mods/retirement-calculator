@@ -43,14 +43,10 @@
   function readForm() {
     const data = {};
     document.querySelectorAll('input[id], select[id]').forEach((el) => {
-      if (el.id === 'projectionYearSlider') return;
+      if (el.id === 'projectionYearSlider' || el.id === 'projectionChartZoom') return;
       data[el.id] = el.type === 'checkbox' ? el.checked : el.value;
     });
     return data;
-  }
-
-  function isTodayMode() {
-    return document.querySelector('[data-display-mode="real"]')?.classList.contains('is-active') !== false;
   }
 
   function utcDate(year, month, day) {
@@ -76,9 +72,28 @@
     return wholeYears + (end - anniversary) / Math.max(nextAnniversary - anniversary, 1);
   }
 
-  function firstRetirementFactor(result) {
-    const years = Math.max(exactCalendarYearsBetween(result.asOfDate, result.firstRetirementDate), 0);
+  function inflationFactor(result, date) {
+    const years = Math.max(exactCalendarYearsBetween(result.asOfDate, date), 0);
     return Math.pow(1 + result.input.inflationPct / 100, years);
+  }
+
+  function firstRetirementFactor(result) {
+    return inflationFactor(result, result.firstRetirementDate);
+  }
+
+  function removeDisplayToggle() {
+    document.querySelector('.currency-toggle')?.remove();
+    document.getElementById('futureEquivalentHelp')?.remove();
+    const wrapper = document.querySelector('.currency-toggle-block');
+    if (wrapper && !wrapper.children.length) wrapper.remove();
+  }
+
+  function updateInputHelp() {
+    const spendingHelp = $('desiredSpending')?.closest('.field')?.querySelector('small');
+    if (spendingHelp) spendingHelp.textContent = 'Enter the annual lifestyle amount in today’s dollars.';
+
+    const otherHelp = $('otherRetirementIncome')?.closest('.field')?.querySelector('small');
+    if (otherHelp) otherHelp.textContent = 'Enter the annual amount in today’s dollars. The model adjusts the future cash flow for inflation.';
   }
 
   function rowLabel(valueId, text) {
@@ -87,100 +102,115 @@
     if (span) span.textContent = text;
   }
 
-  function ensureToggleCopy() {
-    const today = document.querySelector('[data-display-mode="real"]');
-    const future = document.querySelector('[data-display-mode="nominal"]');
-    if (today) {
-      today.textContent = 'Today’s buying power';
-      today.title = 'Show amounts in today’s purchasing power.';
-    }
-    if (future) {
-      future.textContent = 'Future equivalent $';
-      future.title = 'Show the future dollar equivalent of today’s buying power at first retirement. SSA and TRS are shown at their own benefit start dates.';
-    }
+  function ensureFutureNeedRow() {
+    if ($('inflationAdjustedSpendingResult')) return;
+    const spendingRow = $('spendingGoalBreakdownResult')?.closest('.income-line');
+    if (!spendingRow) return;
 
-    const toggle = document.querySelector('.currency-toggle');
-    if (toggle && !document.getElementById('futureEquivalentHelp')) {
-      const wrapper = document.createElement('div');
-      wrapper.className = 'currency-toggle-block';
-      toggle.parentNode.insertBefore(wrapper, toggle);
-      wrapper.appendChild(toggle);
+    const row = document.createElement('div');
+    row.className = 'income-line inflation-need-line';
+    row.innerHTML = '<span>Estimated spending needed at first retirement</span><strong id="inflationAdjustedSpendingResult">—</strong>';
+    spendingRow.insertAdjacentElement('afterend', row);
 
-      const help = document.createElement('small');
-      help.id = 'futureEquivalentHelp';
-      help.textContent = 'Future equivalent $ = the nominal dollars needed at first retirement to match today’s buying power.';
-      wrapper.appendChild(help);
+    const note = document.createElement('small');
+    note.id = 'inflationAdjustedSpendingNote';
+    note.className = 'inflation-need-note';
+    row.insertAdjacentElement('afterend', note);
 
+    if (!document.getElementById('singleDollarModeStyle')) {
       const style = document.createElement('style');
-      style.id = 'futureEquivalentHelpStyle';
+      style.id = 'singleDollarModeStyle';
       style.textContent = `
-        .currency-toggle-block{display:grid;justify-items:end;gap:6px;max-width:360px}
-        #futureEquivalentHelp{max-width:330px;color:var(--muted,#9caaa4);font-size:.68rem;line-height:1.35;text-align:right}
-        @media(max-width:720px){.currency-toggle-block{width:100%;max-width:none;justify-items:stretch}#futureEquivalentHelp{text-align:left;max-width:none}}
+        .intro{align-items:flex-start}
+        .inflation-need-line{padding-top:11px;color:var(--ink);font-weight:700}
+        .inflation-need-line strong{color:var(--accent)}
+        .inflation-need-note{display:block;margin:-2px 0 9px;color:var(--muted);font-size:.7rem;line-height:1.4}
+        .income-secondary{display:block;margin-top:2px;color:var(--muted);font-size:.68rem;font-weight:500;line-height:1.3}
       `;
       document.head.appendChild(style);
     }
   }
 
+  function setSecondary(valueId, text) {
+    const row = $(valueId)?.closest('.income-line');
+    if (!row) return;
+    let small = row.querySelector('.income-secondary');
+    if (!small) {
+      small = document.createElement('small');
+      small.className = 'income-secondary';
+      row.querySelector('span')?.appendChild(small);
+    }
+    small.textContent = text;
+  }
+
+  function loadChartControls() {
+    if (document.querySelector('script[data-retirement-chart-controls]')) return;
+    const script = document.createElement('script');
+    script.src = 'chart-controls.js';
+    script.dataset.retirementChartControls = 'true';
+    document.head.appendChild(script);
+  }
+
   function render() {
-    ensureToggleCopy();
+    removeDisplayToggle();
+    updateInputHelp();
+    ensureFutureNeedRow();
+
     const result = Model.analyze(readForm());
     if (!result || result.errors?.length) return;
 
-    const todayMode = isTodayMode();
-    const factor = firstRetirementFactor(result);
-    const spending = todayMode ? result.input.desiredSpending : result.input.desiredSpending * factor;
-    const withdrawal = todayMode ? result.portfolioGapAfterAllIncomeReal : result.portfolioGapAfterAllIncomeReal * factor;
-    const other = result.input.otherRetirementIncome;
-
-    const primarySs = result.socialSecurity?.enabled
-      ? (todayMode ? result.socialSecurity.annualBenefitReal : result.socialSecurity.annualBenefitNominalAtClaim)
+    const futureSpending = result.input.desiredSpending * firstRetirementFactor(result);
+    const primarySsNominal = result.socialSecurity?.enabled
+      ? result.socialSecurity.annualBenefitReal * inflationFactor(result, result.socialSecurity.claimDate)
       : 0;
-    const spouseSs = result.spouseSocialSecurity?.enabled
-      ? (todayMode ? result.spouseSocialSecurity.annualBenefitReal : result.spouseSocialSecurity.annualBenefitNominalAtClaim)
-      : 0;
-    const trs = result.trs?.eligible
-      ? (todayMode ? result.trs.annualBenefitRealAtStart : result.trs.annualBenefitNominal)
+    const spouseSsNominal = result.spouseSocialSecurity?.enabled
+      ? result.spouseSocialSecurity.annualBenefitReal * inflationFactor(result, result.spouseSocialSecurity.claimDate)
       : 0;
 
-    if ($('summaryModeLabel')) $('summaryModeLabel').textContent = todayMode ? 'Today’s buying power' : 'Future equivalent $';
-    if ($('spendingGoalBreakdownResult')) $('spendingGoalBreakdownResult').textContent = `${money.format(spending)}/yr`;
-    if ($('primarySocialSecurityResult')) $('primarySocialSecurityResult').textContent = `${money.format(primarySs)}/yr`;
-    if ($('spouseSocialSecurityResult') && result.spouse) $('spouseSocialSecurityResult').textContent = `${money.format(spouseSs)}/yr`;
-    if ($('trsIncomeResult') && result.trs?.eligible) $('trsIncomeResult').textContent = `${money.format(trs)}/yr`;
-    if ($('otherIncomeResult')) $('otherIncomeResult').textContent = `${money.format(other)}/yr`;
-    if ($('portfolioGapResult')) $('portfolioGapResult').textContent = `${money.format(withdrawal)}/yr`;
-
-    rowLabel('spendingGoalBreakdownResult', todayMode ? 'Household spending goal' : 'Household spending goal (future equivalent)');
-    rowLabel('primarySocialSecurityResult', todayMode ? 'Your Social Security' : 'Your Social Security (at claim)');
-    rowLabel('spouseSocialSecurityResult', todayMode ? 'Spouse Social Security' : 'Spouse Social Security (at claim)');
-    rowLabel('trsIncomeResult', todayMode ? 'Alabama TRS pension' : 'Alabama TRS pension (at start)');
-    rowLabel('otherIncomeResult', 'Other retirement income (entered amount)');
-    rowLabel('portfolioGapResult', todayMode ? 'Needed from retirement accounts' : 'Needed from retirement accounts (future equivalent)');
-
-    if ($('socialSecurityEstimateInline') && result.socialSecurity?.enabled) {
-      $('socialSecurityEstimateInline').textContent = todayMode
-        ? `About ${money.format(result.socialSecurity.monthlyBenefitReal)}/mo in today’s buying power`
-        : `Projected about ${money.format(result.socialSecurity.monthlyBenefitNominalAtClaim)}/mo when claimed`;
+    if ($('summaryModeLabel')) $('summaryModeLabel').textContent = 'Today’s buying power';
+    if ($('spendingGoalBreakdownResult')) $('spendingGoalBreakdownResult').textContent = `${money.format(result.input.desiredSpending)}/yr`;
+    if ($('inflationAdjustedSpendingResult')) $('inflationAdjustedSpendingResult').textContent = `${money.format(futureSpending)}/yr`;
+    if ($('inflationAdjustedSpendingNote')) {
+      $('inflationAdjustedSpendingNote').textContent = `Estimated future dollars needed to preserve the buying power of today’s ${money.format(result.input.desiredSpending)}/yr goal at the first retirement date, using ${result.input.inflationPct.toFixed(2)}% inflation.`;
     }
-    if ($('spouseSocialSecurityEstimateInline') && result.spouse && result.spouseSocialSecurity?.enabled) {
-      $('spouseSocialSecurityEstimateInline').textContent = todayMode
-        ? `About ${money.format(result.spouseSocialSecurity.monthlyBenefitReal)}/mo in today’s buying power`
-        : `Projected about ${money.format(result.spouseSocialSecurity.monthlyBenefitNominalAtClaim)}/mo when claimed`;
+
+    if ($('primarySocialSecurityResult')) $('primarySocialSecurityResult').textContent = result.socialSecurity?.enabled ? `${money.format(result.socialSecurity.annualBenefitReal)}/yr` : '$0/yr';
+    if ($('spouseSocialSecurityResult') && result.spouse) $('spouseSocialSecurityResult').textContent = result.spouseSocialSecurity?.enabled ? `${money.format(result.spouseSocialSecurity.annualBenefitReal)}/yr` : '$0/yr';
+    if ($('trsIncomeResult') && result.trs?.eligible) $('trsIncomeResult').textContent = `${money.format(result.trs.annualBenefitRealAtStart)}/yr`;
+    if ($('otherIncomeResult')) $('otherIncomeResult').textContent = `${money.format(result.input.otherRetirementIncome)}/yr`;
+    if ($('portfolioGapResult')) $('portfolioGapResult').textContent = `${money.format(result.portfolioGapAfterAllIncomeReal)}/yr`;
+
+    rowLabel('spendingGoalBreakdownResult', 'Household spending goal (today)');
+    rowLabel('primarySocialSecurityResult', 'Your Social Security');
+    rowLabel('spouseSocialSecurityResult', 'Spouse Social Security');
+    rowLabel('trsIncomeResult', 'Alabama TRS pension');
+    rowLabel('otherIncomeResult', 'Other retirement income');
+    rowLabel('portfolioGapResult', 'Needed from retirement accounts');
+
+    if (result.socialSecurity?.enabled) {
+      setSecondary('primarySocialSecurityResult', `Today’s buying power · about ${money.format(primarySsNominal)}/yr projected when claimed.`);
+      if ($('socialSecurityEstimateInline')) {
+        $('socialSecurityEstimateInline').textContent = `About ${money.format(result.socialSecurity.monthlyBenefitReal)}/mo in today’s buying power · about ${money.format(primarySsNominal / 12)}/mo projected when claimed`;
+      }
     }
-    if ($('trsEstimateInline') && result.trs?.eligible) {
-      $('trsEstimateInline').textContent = todayMode
-        ? `Estimated maximum benefit: ${money.format(result.trs.annualBenefitRealAtStart)}/yr in today’s buying power`
-        : `Estimated maximum benefit: ${money.format(result.trs.annualBenefitNominal)}/yr at pension start`;
+
+    if (result.spouse && result.spouseSocialSecurity?.enabled) {
+      setSecondary('spouseSocialSecurityResult', `Today’s buying power · about ${money.format(spouseSsNominal)}/yr projected when claimed.`);
+      if ($('spouseSocialSecurityEstimateInline')) {
+        $('spouseSocialSecurityEstimateInline').textContent = `About ${money.format(result.spouseSocialSecurity.monthlyBenefitReal)}/mo in today’s buying power · about ${money.format(spouseSsNominal / 12)}/mo projected when claimed`;
+      }
+    }
+
+    if (result.trs?.eligible) {
+      setSecondary('trsIncomeResult', `Today’s buying power · about ${money.format(result.trs.annualBenefitNominal)}/yr projected at pension start.`);
+      if ($('trsEstimateInline')) {
+        $('trsEstimateInline').textContent = `Estimated maximum benefit: ${money.format(result.trs.annualBenefitRealAtStart)}/yr in today’s buying power · about ${money.format(result.trs.annualBenefitNominal)}/yr at pension start`;
+      }
     }
 
     const note = $('retirementAccountWithdrawalNote');
     if (note) {
-      if (todayMode) {
-        note.innerHTML = `After all recurring retirement income is active, the model needs about <strong>${money.format(withdrawal)}/yr</strong> from invested retirement accounts in today’s buying power. “Other retirement income” is intentionally shown exactly as entered and is never inflation-increased; the calculator only converts it internally when a common purchasing-power basis is needed for the cash-flow math.`;
-      } else {
-        note.innerHTML = `The retirement-account need is shown as a <strong>future-dollar equivalent at first retirement</strong>. Social Security and TRS are shown as the projected nominal amounts when each benefit actually starts, while “other income” is shown exactly as entered and remains fixed. Because those income streams can start in different years, the future-mode rows are not all expressed at one common date.`;
-      }
+      note.innerHTML = `All planning inputs are entered in <strong>today’s dollars</strong>. After Social Security, TRS, and other modeled income, the plan needs about <strong>${money.format(result.portfolioGapAfterAllIncomeReal)}/yr</strong> from invested retirement accounts in today’s buying power. The cash-flow engine then converts spending and income into the future nominal dollars needed in each modeled year.`;
     }
   }
 
@@ -190,12 +220,21 @@
 
   function init() {
     forceDarkOnlyChrome();
-    ensureToggleCopy();
+    removeDisplayToggle();
+    updateInputHelp();
     schedule();
-    document.addEventListener('input', schedule);
-    document.addEventListener('change', schedule);
+    loadChartControls();
+
+    document.addEventListener('input', (event) => {
+      if (event.target?.id === 'projectionYearSlider' || event.target?.id === 'projectionChartZoom') return;
+      schedule();
+    });
+    document.addEventListener('change', (event) => {
+      if (event.target?.id === 'projectionYearSlider' || event.target?.id === 'projectionChartZoom') return;
+      schedule();
+    });
     document.addEventListener('click', (event) => {
-      if (event.target?.closest('[data-display-mode], #resetButton')) schedule();
+      if (event.target?.closest('#resetButton')) schedule();
     });
   }
 
