@@ -15,7 +15,7 @@
 
   if (!document.querySelector('script[data-planner-accordion]')) {
     const script = document.createElement('script');
-    script.src = 'section-accordion.js?v=20260809-2044';
+    script.src = 'section-accordion.js?v=20260809-2104';
     script.dataset.plannerAccordion = 'true';
     document.head.appendChild(script);
   }
