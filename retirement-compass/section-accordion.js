@@ -179,6 +179,17 @@
     section.removeAttribute('open');
   }
 
+  function keepHeaderAtViewportPosition(section, previousTop) {
+    if (!section || !Number.isFinite(previousTop)) return;
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        const currentTop = section.getBoundingClientRect().top;
+        const delta = currentTop - previousTop;
+        if (Math.abs(delta) > 0.5) window.scrollBy(0, delta);
+      });
+    });
+  }
+
   function init() {
     installStyles();
     const built = buildAccordion();
@@ -202,6 +213,21 @@
     }
 
     sections.forEach((section) => {
+      const summary = section.querySelector('.planner-section-summary');
+
+      // On a user-initiated close, take control of the collapse so the section
+      // header remains anchored at the same place in the viewport after the
+      // large body disappears. Programmatic closes do not move the page.
+      summary?.addEventListener('click', (event) => {
+        if (!section.open || syncing) return;
+        event.preventDefault();
+        const previousTop = section.getBoundingClientRect().top;
+        syncing = true;
+        forceClosed(section);
+        syncing = false;
+        keepHeaderAtViewportPosition(section, previousTop);
+      });
+
       section.addEventListener('toggle', () => {
         if (syncing || !section.open) return;
         syncing = true;
