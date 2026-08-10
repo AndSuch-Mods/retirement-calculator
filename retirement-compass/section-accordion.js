@@ -8,12 +8,14 @@
     const style = document.createElement('style');
     style.id = 'plannerAccordionStyle';
     style.textContent = `
+      .input-panel{overflow-anchor:none}
       .planner-section{
         margin:0 0 14px;
         border:1px solid var(--line);
         border-radius:18px;
         background:var(--surface);
         overflow:hidden;
+        overflow-anchor:none;
       }
       .planner-section[hidden]{display:none!important}
       .planner-section-summary{
@@ -26,6 +28,7 @@
         cursor:pointer;
         background:var(--surface-soft);
         user-select:none;
+        scroll-margin-top:12px;
       }
       .planner-section-summary::-webkit-details-marker{display:none}
       .planner-section-summary::marker{display:none}
@@ -179,13 +182,24 @@
     section.removeAttribute('open');
   }
 
-  function keepHeaderAtViewportPosition(section, previousTop) {
-    if (!section || !Number.isFinite(previousTop)) return;
+  function forceOpen(section) {
+    if (!section) return;
+    section.open = true;
+    section.setAttribute('open', '');
+  }
+
+  function placeSectionAtTop(section) {
+    if (!section) return;
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
-        const currentTop = section.getBoundingClientRect().top;
-        const delta = currentTop - previousTop;
-        if (Math.abs(delta) > 0.5) window.scrollBy(0, delta);
+        const html = document.documentElement;
+        const previousBehavior = html.style.scrollBehavior;
+        html.style.scrollBehavior = 'auto';
+        const top = Math.max(0, window.scrollY + section.getBoundingClientRect().top - 12);
+        window.scrollTo(0, top);
+        requestAnimationFrame(() => {
+          html.style.scrollBehavior = previousBehavior;
+        });
       });
     });
   }
@@ -215,24 +229,26 @@
     sections.forEach((section) => {
       const summary = section.querySelector('.planner-section-summary');
 
-      // On a user-initiated close, take control of the collapse so the section
-      // header remains anchored at the same place in the viewport after the
-      // large body disappears. Programmatic closes do not move the page.
+      // Handle both opening and closing ourselves. This prevents the browser from
+      // anchoring to stale content when a section above the one being opened closes.
       summary?.addEventListener('click', (event) => {
-        if (!section.open || syncing) return;
+        if (syncing) return;
         event.preventDefault();
-        const previousTop = section.getBoundingClientRect().top;
-        syncing = true;
-        forceClosed(section);
-        syncing = false;
-        keepHeaderAtViewportPosition(section, previousTop);
-      });
+        const opening = !section.open;
 
-      section.addEventListener('toggle', () => {
-        if (syncing || !section.open) return;
         syncing = true;
-        closeOthers(section);
+        if (opening) {
+          closeOthers(section);
+          forceOpen(section);
+        } else {
+          forceClosed(section);
+        }
         syncing = false;
+
+        // After the layout has settled, always put the header the user tapped at
+        // the top of the viewport. This is especially important when opening a
+        // lower section causes a large section above it to collapse.
+        placeSectionAtTop(section);
       });
     });
 
@@ -245,14 +261,10 @@
       const originalLifestyleStep = lifestyleHeading?.querySelector('.step-number');
       if (originalLifestyleStep) originalLifestyleStep.textContent = enabled ? '3' : '2';
 
-      // The spouse toggle only controls whether the collapsed spouse section exists.
-      // It must never open that section as a side effect.
       if (spouseChanged || !enabled) forceClosed(spouseSection);
       if (reset) collapseAll();
     }
 
-    // Force the initial state closed more than once so browser state restoration
-    // or later calculator initialization cannot reopen a section on page load.
     syncSpouseState({ reset: true });
     requestAnimationFrame(collapseAll);
     setTimeout(collapseAll, 0);
