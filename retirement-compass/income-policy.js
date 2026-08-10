@@ -12,4 +12,11 @@
     ...Model,
     __todayDollarInputPolicy: true
   };
+
+  if (!document.querySelector('script[data-planner-accordion]')) {
+    const script = document.createElement('script');
+    script.src = 'section-accordion.js';
+    script.dataset.plannerAccordion = 'true';
+    document.head.appendChild(script);
+  }
 })(typeof globalThis !== 'undefined' ? globalThis : this);
