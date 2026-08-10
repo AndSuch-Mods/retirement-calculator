@@ -48,7 +48,7 @@
       .year-scrubber-top{justify-content:flex-start!important;align-items:flex-end!important;flex-wrap:wrap}
       .year-scrubber-balance{text-align:left!important}
       .year-scrubber-balance strong,#projectionSelectedYear{font-variant-numeric:tabular-nums}
-      .chart-zoom-controls{margin-left:auto;display:grid;grid-template-columns:auto minmax(110px,170px) auto;gap:8px;align-items:center}
+      .chart-zoom-controls{margin-left:auto;display:grid;grid-template-columns:auto auto minmax(110px,170px) auto;gap:8px;align-items:center}
       .chart-zoom-label{color:var(--muted);font-size:.7rem;white-space:nowrap}
       .chart-zoom-range{width:100%;accent-color:var(--brand);cursor:pointer}
       .chart-fit-button{border:1px solid var(--line-strong);border-radius:999px;background:var(--surface);color:var(--ink);padding:6px 10px;font:inherit;font-size:.72rem;font-weight:700;cursor:pointer}
@@ -56,7 +56,7 @@
       .chart-zoom-value{min-width:38px;color:var(--muted);font-size:.7rem;text-align:right;font-variant-numeric:tabular-nums}
       @media(max-width:720px){
         .sticky-y-axis-inner{height:300px}
-        .chart-zoom-controls{width:100%;margin-left:0;grid-template-columns:auto minmax(0,1fr) auto}
+        .chart-zoom-controls{width:100%;margin-left:0;grid-template-columns:auto auto minmax(0,1fr) auto}
         .year-scrubber-top{align-items:flex-start!important}
       }
     `;
@@ -198,7 +198,7 @@
     const plotLeft = 72;
     const plotRight = 28;
     const selectedX = plotLeft + ratio * Math.max(svgWidth - plotLeft - plotRight, 1);
-    const maxScroll = Math.max(svg.scrollWidth - shell.clientWidth, 0);
+    const maxScroll = Math.max(svgWidth - shell.clientWidth, 0);
     const desired = Math.min(Math.max(selectedX - shell.clientWidth / 2, 0), maxScroll);
     shell.scrollLeft = desired;
   }
