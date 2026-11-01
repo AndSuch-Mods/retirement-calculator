@@ -45,6 +45,11 @@ const selfEmployed = Model.analyze({
   ssaSelfEmploymentMonth11: true, ssaSelfEmploymentMonth12: true
 });
 assert.equal(selfEmployed.socialSecurity.ssaPaymentSummary.graceYear, 2028);
+const extraNetIncome = Model.analyze({
+  ...base, ssaMonthlyOverrideYear: 2027, ssaNetSelfEmploymentYear: 10000
+});
+const earnings = result => result.ssaSchedules[0].years.find(year => year.year === 2027).testEarnings;
+assert.ok(Math.abs(earnings(extraNetIncome) - earnings(grace) - 10000) < 0.01);
 
 // SSA credits even partially withheld months at FRA; the adjustment is
 // effective beginning with that month, not while the person is still under FRA.
