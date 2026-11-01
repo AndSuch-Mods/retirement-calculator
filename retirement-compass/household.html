@@ -75,6 +75,12 @@
                 <label class="switch-row ssa-setting" for="ssaUseMonthlyRule"><span><strong>Apply the special monthly earnings rule</strong><small>Protects qualifying low-earnings months in the first year with a non-working month, even when annual earnings exceed the limit.</small></span><span class="switch"><input type="checkbox" id="ssaUseMonthlyRule"><span aria-hidden="true"></span></span></label>
                 <label class="switch-row ssa-setting" for="ssaApplyFraAdjustment"><span><strong>Recalculate benefits at full retirement age</strong><small>Credits months with full or partial earnings-test withholding, increasing the ongoing early-claim benefit.</small></span><span class="switch"><input type="checkbox" id="ssaApplyFraAdjustment"><span aria-hidden="true"></span></span></label>
                 <p class="ssa-rule-summary" id="ssaRuleSummary">Analyzing Social Security monthly rules…</p>
+                <details class="ssa-payment-preview">
+                  <summary>View estimated month-by-month payments</summary>
+                  <div class="ssa-payment-toolbar"><label for="ssaPaymentYear">Projection year</label><select id="ssaPaymentYear" aria-label="Your Social Security payment projection year"></select></div>
+                  <div class="ssa-payment-list" id="ssaPaymentTable"></div>
+                  <p class="ssa-help">These are estimated benefit amounts for each entitlement month in future dollars, not exact SSA deposit dates.</p>
+                </details>
                 <details class="ssa-monthly-customization">
                   <summary>Customize monthly earnings or self-employment</summary>
                   <p class="ssa-help">Leave wages blank to use salary and retirement dates above. Enter actual or expected monthly <em>wages</em> only where different. Mark months with substantial self-employment services; generally more than 45 hours, or 15–45 hours in certain skilled work. These fields affect the Social Security earnings test, not 401(k) contributions or salary.</p>
@@ -126,6 +132,12 @@
                   <label class="switch-row ssa-setting" for="spouseSsaUseMonthlyRule"><span><strong>Apply the special monthly earnings rule</strong><small>Protects qualifying low-earnings months in the first applicable grace year.</small></span><span class="switch"><input type="checkbox" id="spouseSsaUseMonthlyRule"><span aria-hidden="true"></span></span></label>
                   <label class="switch-row ssa-setting" for="spouseSsaApplyFraAdjustment"><span><strong>Recalculate benefits at full retirement age</strong><small>Credits months with full or partial earnings-test withholding.</small></span><span class="switch"><input type="checkbox" id="spouseSsaApplyFraAdjustment"><span aria-hidden="true"></span></span></label>
                   <p class="ssa-rule-summary" id="spouseSsaRuleSummary">Analyzing Social Security monthly rules…</p>
+                  <details class="ssa-payment-preview">
+                    <summary>View estimated month-by-month payments</summary>
+                    <div class="ssa-payment-toolbar"><label for="spouseSsaPaymentYear">Projection year</label><select id="spouseSsaPaymentYear" aria-label="Spouse Social Security payment projection year"></select></div>
+                    <div class="ssa-payment-list" id="spouseSsaPaymentTable"></div>
+                    <p class="ssa-help">Estimates use future dollars for the benefit month and do not predict the SSA deposit date.</p>
+                  </details>
                   <details class="ssa-monthly-customization">
                     <summary>Customize monthly earnings or self-employment</summary>
                     <p class="ssa-help">Leave wages blank for the projected salary. Mark months with substantial self-employment services. These entries affect the Social Security earnings test only.</p>
