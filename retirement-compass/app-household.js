@@ -13,7 +13,39 @@
     'spouseSocialSecurityCareerStartAge','spouseTrsEnabled','spouseTrsTier','spouseTrsCurrentServiceYears',
     'desiredSpending','otherRetirementIncome','preRetirementReturnPct','retirementReturnPct','inflationPct'
   ];
+  // Include the optional monthly SSA controls in normal input/reset handling.
+  for (const prefix of ['ssa', 'spouseSsa']) {
+    inputIds.push(prefix + 'UseMonthlyRule', prefix + 'ApplyFraAdjustment',
+      prefix + 'MonthlyOverrideYear', prefix + 'NetSelfEmploymentYear');
+    for (let m = 1; m <= 12; m += 1) {
+      const n = String(m).padStart(2, '0');
+      inputIds.push(prefix + 'WageOverride' + n, prefix + 'SelfEmploymentMonth' + n);
+    }
+  }
+
   const $ = (id) => document.getElementById(id);
+  const monthLabels = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  function makeMonthlyEarningsInputs(){
+    for (const prefix of ['ssa','spouseSsa']) {
+      const holder = $(prefix + 'MonthOverrides');
+      holder.innerHTML =
+        '<span class="ssa-month-heading">Month</span>' +
+        '<span class="ssa-month-heading">Wages ($)</span>' +
+        '<span class="ssa-month-heading">Substantial self-employment</span>' +
+        monthLabels.map((month, index) => {
+          const number = String(index + 1).padStart(2, '0');
+          const wageId = prefix + 'WageOverride' + number;
+          const serviceId = prefix + 'SelfEmploymentMonth' + number;
+          return `<label class="ssa-month-name" for="${wageId}">${month}</label>
+            <input type="number" id="${wageId}" min="0" step="100" inputmode="decimal" placeholder="Auto"
+              aria-label="${month} earnings override in dollars">
+            <label class="ssa-self-employment" for="${serviceId}">
+              <input type="checkbox" id="${serviceId}" aria-label="${month} substantial self-employment services">
+              <span>Yes</span>
+            </label>`;
+        }).join('');
+    }
+  }
   const currency = new Intl.NumberFormat('en-US',{style:'currency',currency:'USD',maximumFractionDigits:0});
   const compactCurrency = new Intl.NumberFormat('en-US',{style:'currency',currency:'USD',notation:'compact',maximumFractionDigits:1});
   const percent1 = new Intl.NumberFormat('en-US',{style:'percent',maximumFractionDigits:1,minimumFractionDigits:1});
@@ -64,13 +96,90 @@
     else{pill.textContent='Needs adjustment';pill.classList.add('negative');$('statusHeadline').textContent='The modeled household portfolio runs out before the planning horizon.';$('statusExplanation').textContent=result.depletionDate?`The combined invested balance reaches $0 around ${formatDate(result.depletionDate)}.`:'The projected balance is below the modeled household need.';}
   }
 
+  function renderSsaPayments(schedule, prefix){
+    const select=$(prefix+'PaymentYear');
+    const target=$(prefix+'PaymentTable');
+    if(!schedule?.months?.length){
+      select.innerHTML='';
+      target.textContent='No benefits scheduled for this scenario.';
+      return;
+    }
+    const years=[...new Set(schedule.months.map(m=>m.year))];
+    const oldYear=Number(select.value);
+    const preferred=schedule.graceYear || schedule.years.find(y=>y.yearWithheld>0)?.year || years[0];
+    const current=years.includes(oldYear)?oldYear:preferred;
+    select.innerHTML=years.map(y=>`<option value="${y}">${y}</option>`).join('');
+    select.value=String(current);
+    const rows=schedule.months.filter(m=>m.year===current);
+    target.innerHTML=rows.map(m=>{
+      const status=!m.beforeFRA?'After full retirement age'
+        : schedule.graceYear===m.year && m.nonService?'Protected grace-year month'
+        : 'Annual earnings test';
+      return `<div class="ssa-payment-month">
+        <strong>${monthLabels[m.month]}</strong>
+        <span class="ssa-payment-values">Paid ${formatMoney(m.paid)} · Withheld ${formatMoney(m.withheld)}</span>
+        <span class="ssa-payment-meta">Gross ${formatMoney(m.gross)} · Wages ${formatMoney(m.wages)} · ${status}</span>
+      </div>`;
+    }).join('')||'No benefit months in this year.';
+  }
+
+  function renderSsaAdvanced(ss, prefix, schedule){
+    const details=$(prefix + 'RuleSummary');
+    const yearNote=$(prefix + 'CustomYearNote');
+    if(!ss?.enabled){
+      details.textContent='Enable Social Security to see the effect of these options.';
+      yearNote.textContent='';
+      renderSsaPayments(null, prefix);
+      return;
+    }
+    const info=ss.ssaPaymentSummary;
+    const monthlyRule=$(prefix + 'UseMonthlyRule').checked;
+    const fraAdjustment=$(prefix + 'ApplyFraAdjustment').checked;
+    const yearInput=$(prefix + 'MonthlyOverrideYear').value;
+    const claimYear=schedule?.months?.[0]?.year || ss.claimYear;
+    yearNote.textContent=`Wages shown as Auto are projected. Editing ${yearInput || claimYear} changes the earnings-test estimate for that year only.`;
+    if(!info){
+      details.textContent='No monthly payment estimate available.';
+      return;
+    }
+    const grace=monthlyRule
+      ? (info.graceYear ? `Monthly-test grace year: ${info.graceYear}.` : 'No qualifying grace year before full retirement age in the model.')
+      : 'Monthly-rule exception turned off.';
+    const months=info.creditedMonths;
+    const adjustment=fraAdjustment
+      ? (months && info.originalReductionMonths
+        ? `At full retirement age, credit for ${months} months with full or partial withholding raises the ongoing amount about ${info.fraIncreasePct.toFixed(1)}% starting ${formatDate(info.fraMonth)}.`
+        : 'No benefit increase from withheld months is projected.')
+      : 'Full-retirement-age benefit adjustment turned off.';
+    details.textContent=`${grace} ${adjustment} SSA determines actual withholding and payment dates.`;
+    renderSsaPayments(schedule, prefix);
+  }
+
   function renderSocialSecurity(result){
     const ss=result.socialSecurity;
-    if(ss.enabled){$('socialSecurityEstimateInline').textContent=`About ${formatMoney(ss.monthlyBenefitReal)}/mo in today’s dollars`;$('socialSecurityEstimateDetail').textContent=`Claim age ${ss.claimAge}; modeled FRA ${ss.fullRetirementAge.toFixed(2)}; AIME about ${formatMoney(ss.aime)}/mo. Actual SSA earnings records will be more precise.${ss.earningsTestMayApply ? ' Cash-flow projections include estimated earnings-test withholding before full retirement age.' : ''}`;}
-    else{$('socialSecurityEstimateInline').textContent='Social Security estimate disabled';$('socialSecurityEstimateDetail').textContent='No Social Security income is included for you.';}
+    if(ss.enabled){
+      $('socialSecurityEstimateInline').textContent=`About ${formatMoney(ss.monthlyBenefitReal)}/mo gross at claim, in today’s dollars`;
+      $('socialSecurityEstimateDetail').textContent=`Claim age ${ss.claimAge}; modeled FRA ${ss.fullRetirementAge.toFixed(2)}; AIME about ${formatMoney(ss.aime)}/mo. Earnings-test withholding can reduce payments before FRA. Actual SSA earnings records will be more precise.`;
+    } else {
+      $('socialSecurityEstimateInline').textContent='Social Security estimate disabled';
+      $('socialSecurityEstimateDetail').textContent='No Social Security income is included for you.';
+    }
+    renderSsaAdvanced(ss, 'ssa', result.ssaSchedules[0]);
     const sss=result.spouseSocialSecurity;
-    if(result.spouse&&sss.enabled){$('spouseSocialSecurityEstimateInline').textContent=`About ${formatMoney(sss.monthlyBenefitReal)}/mo in today’s dollars`;$('spouseSocialSecurityEstimateDetail').textContent=`Claim age ${sss.claimAge}; modeled FRA ${sss.fullRetirementAge.toFixed(2)}. Montevallo wages are treated as Social Security-covered earnings.${sss.earningsTestMayApply ? ' Cash-flow projections include estimated earnings-test withholding before full retirement age.' : ''}`;}
-    else{$('spouseSocialSecurityEstimateInline').textContent='Spouse Social Security estimate disabled';$('spouseSocialSecurityEstimateDetail').textContent='No spouse Social Security income is included.';}
+    if(result.spouse&&sss.enabled){
+      $('spouseSocialSecurityEstimateInline').textContent=`About ${formatMoney(sss.monthlyBenefitReal)}/mo gross at claim, in today’s dollars`;
+      $('spouseSocialSecurityEstimateDetail').textContent=`Claim age ${sss.claimAge}; modeled FRA ${sss.fullRetirementAge.toFixed(2)}. Montevallo wages are treated as Social Security-covered earnings; actual SSA records will be more precise.`;
+    } else {
+      $('spouseSocialSecurityEstimateInline').textContent='Spouse Social Security estimate disabled';
+      $('spouseSocialSecurityEstimateDetail').textContent='No spouse Social Security income is included.';
+    }
+    renderSsaAdvanced(sss, 'spouseSsa', result.ssaSchedules[1]);
+  }
+
+  function ongoingAnnualSocialSecurity(ss){
+    if(!ss?.enabled) return 0;
+    const adjusted=ss.ssaPaymentSummary?.adjustedClaimFactor || ss.claimFactor;
+    return ss.annualBenefitReal * (ss.claimFactor > 0 ? adjusted / ss.claimFactor : 1);
   }
 
   function renderTrs(result){
@@ -83,9 +192,9 @@
   }
 
   function renderIncome(result){
-    $('primarySocialSecurityResult').textContent=result.socialSecurity.enabled?`${formatMoney(displayAnnualReal(result.socialSecurity.annualBenefitReal,result))}/yr`:'$0/yr';
+    $('primarySocialSecurityResult').textContent=result.socialSecurity.enabled?`${formatMoney(displayAnnualReal(ongoingAnnualSocialSecurity(result.socialSecurity),result))}/yr`:'$0/yr';
     $('spouseSsIncomeRow').hidden=!result.spouse;
-    $('spouseSocialSecurityResult').textContent=result.spouseSocialSecurity.enabled?`${formatMoney(displayAnnualReal(result.spouseSocialSecurity.annualBenefitReal,result))}/yr`:'$0/yr';
+    $('spouseSocialSecurityResult').textContent=result.spouseSocialSecurity.enabled?`${formatMoney(displayAnnualReal(ongoingAnnualSocialSecurity(result.spouseSocialSecurity),result))}/yr`:'$0/yr';
     $('trsIncomeRow').hidden=!(result.spouse&&result.trs.eligible);
     const trsReal=result.trs.eligible?result.trs.annualBenefitRealAtStart:0;
     $('trsIncomeResult').textContent=result.trs.eligible?`${formatMoney(displayAnnualReal(trsReal,result))}/yr`:'$0/yr';
@@ -137,9 +246,13 @@
 
   function attachListeners(){
     inputIds.forEach(id=>{const el=$(id);if(!el)return;el.addEventListener('input',calculateAndRender);el.addEventListener('change',calculateAndRender);});
+    for (const prefix of ['ssa', 'spouseSsa']) {
+      $(prefix+'PaymentYear')?.addEventListener('change', calculateAndRender);
+    }
     document.querySelectorAll('[data-display-mode]').forEach(btn=>btn.addEventListener('click',()=>{displayState.mode=btn.dataset.displayMode;document.querySelectorAll('[data-display-mode]').forEach(b=>b.classList.toggle('is-active',b===btn));calculateAndRender();}));
     $('resetButton').addEventListener('click',()=>{setFormValues(Model.DEFAULTS);displayState.mode='real';document.querySelectorAll('[data-display-mode]').forEach(b=>b.classList.toggle('is-active',b.dataset.displayMode==='real'));calculateAndRender();});
   }
 
+  makeMonthlyEarningsInputs();
   setFormValues(Model.DEFAULTS);attachListeners();calculateAndRender();
 })();

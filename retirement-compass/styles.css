@@ -549,3 +549,53 @@ h1 {
   .currency-toggle { width: 100%; }
   .segment { flex: 1; }
 }
+
+/* Release date visible in browser and iOS home-screen mode. */
+.topbar-actions { display: flex; align-items: center; justify-content: flex-end; gap: 12px; flex-wrap: wrap; }
+.app-updated { display: inline-flex; align-items: center; gap: 6px; color: var(--muted); font-size: 0.75rem; font-weight: 650; white-space: nowrap; }
+.app-updated svg { flex: 0 0 auto; }
+
+/* Detailed SSA controls stay collapsed unless requested. */
+.ssa-advanced { margin-top: 14px; border: 1px solid var(--line); border-radius: var(--radius-md); overflow: hidden; background: var(--surface); }
+.ssa-advanced > summary { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 13px 14px; cursor: pointer; list-style: none; }
+.ssa-advanced > summary::-webkit-details-marker { display: none; }
+.ssa-advanced > summary strong { display: block; font-size: .84rem; }
+.ssa-advanced > summary small { display: block; margin-top: 3px; font-size: .73rem; color: var(--muted); line-height: 1.45; }
+.ssa-advanced[open] > summary .chevron { transform: rotate(180deg); }
+.ssa-advanced-body { padding: 3px 14px 16px; border-top: 1px solid var(--line); }
+.ssa-setting { margin: 3px 0; padding: 11px 0; border-bottom: 1px solid var(--line); }
+.ssa-rule-summary { margin: 12px 0 15px; color: var(--ink); font-size: .78rem; line-height: 1.55; }
+.ssa-monthly-customization { border-top: 1px solid var(--line); padding-top: 12px; }
+.ssa-monthly-customization > summary { cursor: pointer; color: var(--brand-strong); font-size: .78rem; font-weight: 700; line-height: 1.45; }
+.ssa-help { color: var(--muted); font-size: .74rem; line-height: 1.5; margin: 10px 0; }
+.ssa-monthly-customization .field { margin: 11px 0; max-width: 310px; }
+.ssa-monthly-customization .field > span:first-child { display: block; font-size: .77rem; margin-bottom: 6px; }
+.ssa-monthly-table { display: grid; grid-template-columns: 40px minmax(80px, 1fr) minmax(88px, 1fr); gap: 8px; align-items: center; margin-top: 14px; }
+.ssa-month-heading { color: var(--muted); font-size: .67rem; font-weight: 750; }
+.ssa-month-name { font-size: .75rem; font-weight: 680; color: var(--ink); }
+.ssa-monthly-table > input { min-width: 0; width: 100%; padding: 9px; color: var(--ink); border: 1px solid var(--line-strong); background: var(--surface-soft); border-radius: 8px; font-size: .78rem; }
+.ssa-self-employment { display: inline-flex; align-items: center; gap: 6px; min-height: 33px; font-size: .75rem; color: var(--muted); cursor: pointer; }
+.ssa-self-employment input { accent-color: var(--brand); width: 17px; height: 17px; }
+@media (max-width: 430px) {
+  .topbar-actions { gap: 8px; }
+  .app-updated { font-size: .7rem; }
+  .topbar-actions .button { font-size: .76rem; padding: 8px 10px; }
+  .ssa-monthly-table { grid-template-columns: 34px minmax(74px, 1fr) minmax(78px, 1fr); gap: 6px; }
+}
+
+.app-refresh { border: 1px solid var(--brand); border-radius: 999px; background: var(--brand-soft); color: var(--brand-strong); font-size: .73rem; padding: 7px 9px; font-weight: 760; cursor: pointer; }
+.app-refresh[hidden] { display: none; }
+@media (max-width: 430px) { .topbar-actions { row-gap: 3px; } .app-refresh { font-size: .7rem; } }
+
+
+.ssa-payment-preview { border-top: 1px solid var(--line); margin: 0 0 12px; padding-top: 12px; }
+.ssa-payment-preview > summary { cursor: pointer; color: var(--brand-strong); font-size: .78rem; font-weight: 750; }
+.ssa-payment-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 12px 0; }
+.ssa-payment-toolbar label { color: var(--muted); font-size: .75rem; }
+.ssa-payment-toolbar select { max-width: 150px; width: 120px; border: 1px solid var(--line-strong); border-radius: 8px; background: var(--surface); color: var(--ink); padding: 8px; }
+.ssa-payment-list { max-height: 420px; overflow: auto; border: 1px solid var(--line); border-radius: 10px; }
+.ssa-payment-month { padding: 9px 11px; border-bottom: 1px solid var(--line); display: grid; grid-template-columns: 42px minmax(0, 1fr); gap: 4px 8px; }
+.ssa-payment-month:last-child { border-bottom: 0; }
+.ssa-payment-month > strong { grid-row: span 2; font-size: .81rem; color: var(--ink); }
+.ssa-payment-values { font-size: .78rem; font-weight: 720; color: var(--ink); }
+.ssa-payment-meta { font-size: .7rem; color: var(--muted); line-height: 1.4; }

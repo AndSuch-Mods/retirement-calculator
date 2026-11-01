@@ -7,7 +7,7 @@
   <meta name="color-scheme" content="dark">
   <meta name="description" content="A household retirement planner with Social Security, IRS contribution limits, and Alabama TRS pension estimates.">
   <title>Retirement Compass</title>
-  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="styles.css?v=20261101-advanced">
   <link rel="stylesheet" href="dark.css">
   <style>
     select{font:inherit;color:inherit}.select-wrap select{width:100%;min-width:0;border:0;outline:0;background:transparent;padding:11px 12px;color:var(--ink);font-weight:700}.input-wrap input[type="date"]{min-height:44px}.standalone-panel{margin-top:18px}.embedded-switch{margin:0;padding:0 0 14px}.spouse-toggle{margin-top:0;padding:18px;border:1px solid #cfe0da;border-radius:var(--radius-md);background:linear-gradient(145deg,#eef7f4,#f8fbfa)}.spouse-section{margin-top:18px;padding:20px;border:1px solid var(--line);border-radius:var(--radius-lg);background:#fbfcfb}.trs-panel{margin-top:15px;padding:16px;border:1px solid #ead9b8;border-radius:var(--radius-md);background:linear-gradient(145deg,#fff9ed,#fffdf8)}.trs-panel .rules-note{border-top-color:#eadfc9}.trs-panel .rules-note strong{color:#7d5515}@media(max-width:720px){.spouse-section{padding:16px 12px}}
@@ -16,7 +16,14 @@
 <body>
   <header class="topbar">
     <a class="brand" href="#" aria-label="Retirement Compass home"><span class="brand-mark" aria-hidden="true">RC</span><span>Retirement Compass</span></a>
-    <button class="button button-quiet" id="resetButton" type="button">Reset example</button>
+    <div class="topbar-actions">
+      <span class="app-updated" title="Version currently loaded on this device">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 2v4M16 2v4M3 10h18"/><rect x="3" y="4" width="18" height="18" rx="2"/></svg>
+        <time id="appUpdated" datetime="2026-11-01" data-release-id="20261101-ssa-monthly-arf">Updated Nov 1, 2026</time>
+      </span>
+      <button class="app-refresh" id="appRefresh" type="button" hidden>New update available</button>
+      <button class="button button-quiet" id="resetButton" type="button">Reset example</button>
+    </div>
   </header>
 
   <main class="page-shell">
@@ -62,6 +69,29 @@
               <label class="field"><span>Career earnings started around age</span><span class="input-wrap"><input id="socialSecurityCareerStartAge" type="number" min="14" max="40" step="1"><span class="suffix">years</span></span></label>
             </div>
             <div class="rules-note"><strong id="socialSecurityEstimateInline">Estimating…</strong><span id="socialSecurityEstimateDetail"></span></div>
+            <details class="ssa-advanced" id="ssaAdvancedPanel">
+              <summary><span><strong>Detailed Social Security rules</strong><small>First-year monthly rule and benefit increase at full retirement age</small></span><span class="chevron" aria-hidden="true">⌄</span></summary>
+              <div class="ssa-advanced-body">
+                <label class="switch-row ssa-setting" for="ssaUseMonthlyRule"><span><strong>Apply the special monthly earnings rule</strong><small>Protects qualifying low-earnings months in the first year with a non-working month, even when annual earnings exceed the limit.</small></span><span class="switch"><input type="checkbox" id="ssaUseMonthlyRule"><span aria-hidden="true"></span></span></label>
+                <label class="switch-row ssa-setting" for="ssaApplyFraAdjustment"><span><strong>Recalculate benefits at full retirement age</strong><small>Credits months with full or partial earnings-test withholding, increasing the ongoing early-claim benefit.</small></span><span class="switch"><input type="checkbox" id="ssaApplyFraAdjustment"><span aria-hidden="true"></span></span></label>
+                <p class="ssa-rule-summary" id="ssaRuleSummary">Analyzing Social Security monthly rules…</p>
+                <details class="ssa-payment-preview">
+                  <summary>View estimated month-by-month payments</summary>
+                  <div class="ssa-payment-toolbar"><label for="ssaPaymentYear">Projection year</label><select id="ssaPaymentYear" aria-label="Your Social Security payment projection year"></select></div>
+                  <div class="ssa-payment-list" id="ssaPaymentTable"></div>
+                  <p class="ssa-help">These are estimated benefit amounts for each entitlement month in future dollars, not exact SSA deposit dates.</p>
+                </details>
+                <details class="ssa-monthly-customization">
+                  <summary>Customize monthly earnings or self-employment</summary>
+                  <p class="ssa-help">Leave wages blank to use salary and retirement dates above. Enter actual or expected monthly <em>wages</em> only where different. Mark months with substantial self-employment services; generally more than 45 hours, or 15–45 hours in certain skilled work. These fields affect the Social Security earnings test, not 401(k) contributions or salary.</p>
+                  <label class="field"><span>Year to customize (blank = claim year)</span><span class="input-wrap"><input id="ssaMonthlyOverrideYear" type="number" min="1900" max="2300" step="1" placeholder="Claim year"></span></label>
+                  <label class="field"><span>Net self-employment income in that year</span><span class="input-wrap"><input id="ssaNetSelfEmploymentYear" type="number" min="0" step="100" inputmode="decimal" placeholder="0"></span><small>Include net self-employment earnings in the earnings test. If this is the year you reach full retirement age, enter only earnings before your full-retirement-age month.</small></label>
+                  <p class="ssa-help" id="ssaCustomYearNote"></p>
+                  <div class="ssa-monthly-table" id="ssaMonthOverrides"></div>
+                </details>
+              </div>
+            </details>
+
           </div>
         </div>
 
@@ -96,6 +126,29 @@
                 <label class="field"><span>Career earnings started around age</span><span class="input-wrap"><input id="spouseSocialSecurityCareerStartAge" type="number" min="14" max="40" step="1"><span class="suffix">years</span></span></label>
               </div>
               <div class="rules-note"><strong id="spouseSocialSecurityEstimateInline">Estimating…</strong><span id="spouseSocialSecurityEstimateDetail"></span></div>
+              <details class="ssa-advanced" id="spouseSsaAdvancedPanel">
+                <summary><span><strong>Detailed Social Security rules</strong><small>First-year monthly rule and benefit increase at full retirement age</small></span><span class="chevron" aria-hidden="true">⌄</span></summary>
+                <div class="ssa-advanced-body">
+                  <label class="switch-row ssa-setting" for="spouseSsaUseMonthlyRule"><span><strong>Apply the special monthly earnings rule</strong><small>Protects qualifying low-earnings months in the first applicable grace year.</small></span><span class="switch"><input type="checkbox" id="spouseSsaUseMonthlyRule"><span aria-hidden="true"></span></span></label>
+                  <label class="switch-row ssa-setting" for="spouseSsaApplyFraAdjustment"><span><strong>Recalculate benefits at full retirement age</strong><small>Credits months with full or partial earnings-test withholding.</small></span><span class="switch"><input type="checkbox" id="spouseSsaApplyFraAdjustment"><span aria-hidden="true"></span></span></label>
+                  <p class="ssa-rule-summary" id="spouseSsaRuleSummary">Analyzing Social Security monthly rules…</p>
+                  <details class="ssa-payment-preview">
+                    <summary>View estimated month-by-month payments</summary>
+                    <div class="ssa-payment-toolbar"><label for="spouseSsaPaymentYear">Projection year</label><select id="spouseSsaPaymentYear" aria-label="Spouse Social Security payment projection year"></select></div>
+                    <div class="ssa-payment-list" id="spouseSsaPaymentTable"></div>
+                    <p class="ssa-help">Estimates use future dollars for the benefit month and do not predict the SSA deposit date.</p>
+                  </details>
+                  <details class="ssa-monthly-customization">
+                    <summary>Customize monthly earnings or self-employment</summary>
+                    <p class="ssa-help">Leave wages blank for the projected salary. Mark months with substantial self-employment services. These entries affect the Social Security earnings test only.</p>
+                    <label class="field"><span>Year to customize (blank = claim year)</span><span class="input-wrap"><input id="spouseSsaMonthlyOverrideYear" type="number" min="1900" max="2300" step="1" placeholder="Claim year"></span></label>
+                    <label class="field"><span>Net self-employment income in that year</span><span class="input-wrap"><input id="spouseSsaNetSelfEmploymentYear" type="number" min="0" step="100" inputmode="decimal" placeholder="0"></span><small>For a full-retirement-age year, enter only net earnings before that month.</small></label>
+                    <p class="ssa-help" id="spouseSsaCustomYearNote"></p>
+                    <div class="ssa-monthly-table" id="spouseSsaMonthOverrides"></div>
+                  </details>
+                </div>
+              </details>
+
             </div>
           </div>
 
@@ -168,15 +221,17 @@
       <article class="detail-card"><p class="card-label">Real retirement return</p><h3 id="realReturnResult">—</h3><p>Portfolio return after the inflation assumption, once both spouses are retired.</p></article>
     </section>
 
-    <footer class="disclaimer"><strong>Planning estimate, not financial or pension advice.</strong><span>Social Security is reconstructed from estimated earnings rather than an SSA earnings record. Alabama TRS uses current maximum-benefit formulas and projected salary/service; actual RSA service credit, final compensation, survivor-option reductions, sick-leave conversions, future legislative changes, taxes, health-insurance costs, RMDs, and special 403(b)/457 catch-up rules may change actual results. The Social Security earnings test uses annual estimates; the special first-year monthly rule and later benefit recalculation for withheld months are not modeled.</span></footer>
+    <footer class="disclaimer"><strong>Planning estimate, not financial or pension advice.</strong><span>Social Security is reconstructed from estimated earnings rather than an SSA earnings record. Alabama TRS uses current maximum-benefit formulas and projected salary/service; actual RSA service credit, final compensation, survivor-option reductions, sick-leave conversions, future legislative changes, taxes, health-insurance costs, RMDs, and special 403(b)/457 catch-up rules may change actual results. Social Security monthly withholding and full-retirement-age benefit adjustments use estimated wages and user overrides. These figures are not an SSA award calculation; actual covered earnings, non-wage earnings, the exact SSA claiming month, additional earnings recomputations, family benefits, benefit payment timing, and special benefit rules can change actual amounts.</span></footer>
   </main>
 
   <script src="model.js?v=20261101-ssa"></script>
   <script src="household.js"></script>
-  <script src="income-policy.js?v=20261101-ssa"></script>
+  <script src="income-policy.js?v=20261101-advanced"></script>
+  <script src="ssa-benefit-schedule.js?v=20261101-advanced"></script>
   <script src="enhancements.js"></script>
-  <script src="app-household.js?v=20261101-ssa"></script>
+  <script src="app-household.js?v=20261101-advanced"></script>
   <script src="income-clarity.js"></script>
   <script src="display-policy.js"></script>
+  <script src="release-status.js?v=20261101-advanced"></script>
 </body>
 </html>

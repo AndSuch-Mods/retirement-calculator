@@ -46,8 +46,24 @@
     2035: 0.024
   });
 
+  // Advanced own-record Social Security controls are included in Reset.
+  // Empty monthly wages mean "derive from annual salary and retirement date".
+  const SSA_ADVANCED_DEFAULTS = {};
+  for (const prefix of ['ssa', 'spouseSsa']) {
+    SSA_ADVANCED_DEFAULTS[prefix + 'UseMonthlyRule'] = true;
+    SSA_ADVANCED_DEFAULTS[prefix + 'ApplyFraAdjustment'] = true;
+    SSA_ADVANCED_DEFAULTS[prefix + 'MonthlyOverrideYear'] = '';
+    SSA_ADVANCED_DEFAULTS[prefix + 'NetSelfEmploymentYear'] = '';
+    for (let month = 1; month <= 12; month += 1) {
+      const number = String(month).padStart(2, '0');
+      SSA_ADVANCED_DEFAULTS[prefix + 'WageOverride' + number] = '';
+      SSA_ADVANCED_DEFAULTS[prefix + 'SelfEmploymentMonth' + number] = false;
+    }
+  }
+
   const DEFAULTS = Object.freeze({
     ...Existing.DEFAULTS,
+    ...SSA_ADVANCED_DEFAULTS,
     employerMatchTier2Enabled: false,
     employerMatchTier2RatePct: 50,
     employerMatchTier2AdditionalPct: 2
@@ -62,11 +78,40 @@
 
   function normalize(raw = {}) {
     const base = originalNormalize(raw);
+    const advanced = {};
+    for (const [field, fallback] of Object.entries(SSA_ADVANCED_DEFAULTS)) {
+      const value = domFallback(raw, field, fallback);
+      if (typeof fallback === 'boolean') advanced[field] = value === true || value === 'true';
+      else if (field.endsWith('OverrideYear')) {
+        advanced[field] = value === '' || value == null ? '' :
+          Math.round(clamp(value, 1900, 2300));
+      } else {
+        advanced[field] = value === '' || value == null ? '' :
+          Math.max(0, Math.min(Number(value) || 0, 1e9));
+      }
+    }
     return {
       ...base,
+      ...advanced,
       employerMatchTier2Enabled: Boolean(domFallback(raw, 'employerMatchTier2Enabled', DEFAULTS.employerMatchTier2Enabled)),
       employerMatchTier2RatePct: clamp(domFallback(raw, 'employerMatchTier2RatePct', DEFAULTS.employerMatchTier2RatePct), 0, 500),
       employerMatchTier2AdditionalPct: clamp(domFallback(raw, 'employerMatchTier2AdditionalPct', DEFAULTS.employerMatchTier2AdditionalPct), 0, 100)
+    };
+  }
+
+  function ssaRulesForPerson(input, spouse) {
+    const prefix = spouse ? 'spouseSsa' : 'ssa';
+    return {
+      monthlyRule: input[prefix + 'UseMonthlyRule'],
+      fraAdjustment: input[prefix + 'ApplyFraAdjustment'],
+      overrideYear: input[prefix + 'MonthlyOverrideYear'] || null,
+      netSelfEmployment: Number(input[prefix + 'NetSelfEmploymentYear']) || 0,
+      wages: Array.from({ length: 12 }, (_, m) => {
+        const v = input[prefix + 'WageOverride' + String(m + 1).padStart(2, '0')];
+        return v === '' ? null : v;
+      }),
+      substantial: Array.from({ length: 12 }, (_, m) =>
+        input[prefix + 'SelfEmploymentMonth' + String(m + 1).padStart(2, '0')])
     };
   }
 
@@ -148,7 +193,8 @@
         maxRate: input.spouseMaxEmployeeContributionPct, matchRate: 0, matchCap: 0, matchTier2Enabled: false,
         matchTier2Rate: 0, matchTier2Additional: 0, planType: input.spouseVoluntaryPlanType,
         ss: input.spouseSocialSecurityEnabled, ssClaim: input.spouseSocialSecurityClaimAge,
-        careerStart: input.spouseSocialSecurityCareerStartAge
+        careerStart: input.spouseSocialSecurityCareerStartAge,
+        ssRules: ssaRulesForPerson(input, true)
       };
     }
     return {
@@ -160,7 +206,8 @@
       matchTier2Rate: input.employerMatchTier2RatePct / 100,
       matchTier2Additional: input.employerMatchTier2AdditionalPct / 100, planType: '401k',
       ss: input.socialSecurityEnabled, ssClaim: input.socialSecurityClaimAge,
-      careerStart: input.socialSecurityCareerStartAge
+      careerStart: input.socialSecurityCareerStartAge,
+      ssRules: ssaRulesForPerson(input, false)
     };
   }
 
@@ -336,7 +383,36 @@
     const retirementDates = people.map((p) => addYears(p.birth, p.retirementAge));
     const firstRetirementDate = retirementDates.reduce((a, b) => minDate(a, b));
     const bothRetiredDate = retirementDates.reduce((a, b) => maxDate(a, b));
-    const events = buildEvents(input, people, socialSecurity, trs);
+    const scheduleModel = root.SsaBenefitSchedule;
+    if (!scheduleModel) throw new Error('Missing Social Security benefit schedule');
+    const basicEvents = buildEvents(input, people, socialSecurity, trs);
+    const endDateForBenefits = basicEvents[basicEvents.length - 1];
+    const ssaSchedules = people.map((p, index) =>
+      scheduleModel.build({
+        person: p, socialSecurity: socialSecurity[index], input, asOfDate,
+        endDate: endDateForBenefits, addYears,
+        benefitForYear: socialSecurityAnnualNominalForYear,
+        earningsLimitsForYear: earningsTestLimitsForYear
+      })
+    );
+    const events = [...new Map(
+      [...basicEvents, ...ssaSchedules.map(schedule => schedule.fraMonth)]
+        .filter(date => date && date >= asOfDate && date <= endDateForBenefits)
+        .map(date => [+date, date])
+    ).values()].sort((a, b) => a - b);
+    socialSecurity.forEach((ss, index) => {
+      const schedule = ssaSchedules[index];
+      ss.ssaPaymentSummary = {
+        graceYear: schedule.graceYear,
+        creditedMonths: schedule.creditedMonths,
+        originalReductionMonths: schedule.originalReductionMonths,
+        adjustedReductionMonths: schedule.adjustedReductionMonths,
+        totalWithheldNominal: schedule.totalWithheld,
+        fraMonth: schedule.fraMonth,
+        fraIncreasePct: schedule.fraIncreasePct,
+        adjustedClaimFactor: schedule.adjustedClaimFactor
+      };
+    });
     const inflation = input.inflationPct / 100;
     const yearToDate = {};
     const capEvents = [];
@@ -457,18 +533,8 @@
 
         people.forEach((p, pIndex) => {
           const ss = socialSecurity[pIndex];
-          if (!ss?.enabled || end <= ss.claimDate) return;
-          const benefitStart = maxDate(retirementStart, ss.claimDate);
-          if (end <= benefitStart) return;
-          const benefitFraction = yearFraction(benefitStart, end);
-          const annualNominal = socialSecurityAnnualNominalForYear(ss, benefitStart.getUTCFullYear());
-          const fraBirthday = addYears(p.birth, ss.fullRetirementAge);
-          const fraMonth = new Date(Date.UTC(fraBirthday.getUTCFullYear(), fraBirthday.getUTCMonth(), 1));
-          const beforeFraEnd = minDate(end, fraMonth);
-          const beforeFraFraction = beforeFraEnd > benefitStart ? yearFraction(benefitStart, beforeFraEnd) : 0;
-          const test = earningsTestForYear(p, ss, benefitStart.getUTCFullYear(), asOfDate.getUTCFullYear());
-          ssIncome += annualNominal *
-            (benefitFraction - beforeFraFraction + beforeFraFraction * test.payableShare);
+          if (!ss?.enabled) return;
+          ssIncome += scheduleModel.paidBetween(ssaSchedules[pIndex], retirementStart, end);
         });
 
         if (trs?.eligible && end > trs.pensionStart) {
@@ -523,7 +589,9 @@
       ? trs.annualBenefitNominal / Math.pow(1 + inflation, Math.max(yearsBetween(asOfDate, trs.pensionStart), 0))
       : 0;
     const stableRetirementIncomeReal = input.otherRetirementIncome
-      + socialSecurity.reduce((sum, ss) => sum + (ss?.annualBenefitReal || 0), 0)
+      + socialSecurity.reduce((sum, ss) => sum +
+        (ss?.annualBenefitReal || 0) * (ss?.ssaPaymentSummary?.adjustedClaimFactor || ss?.claimFactor || 1) /
+        Math.max(ss?.claimFactor || 1, 1e-12), 0)
       + trsReal;
     const portfolioGapReal = Math.max(input.desiredSpending - stableRetirementIncomeReal, 0);
     const realRetirementReturn = (1 + input.retirementReturnPct / 100) / (1 + inflation) - 1;
@@ -550,6 +618,7 @@
       initialRetirementWithdrawalNominal: initialRetirementWithdrawalNominal || 0,
       initialRetirementWithdrawalReal: (initialRetirementWithdrawalNominal || 0) / firstInflationFactor,
       realRetirementReturn, timeline,
+      ssaSchedules,
       currentIrsLimits: Base.contributionLimitsForEmployee(
         asOfDate.getUTCFullYear(), ageAtYearEnd(people[0].birth, asOfDate.getUTCFullYear())
       ),
