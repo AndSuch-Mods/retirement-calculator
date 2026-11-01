@@ -12,11 +12,11 @@
   const originalNormalize = Existing.normalize.bind(Existing);
   const originalEstimateTrs = Existing.estimateAlabamaTrs.bind(Existing);
 
-  // 2026 Trustees Report intermediate AWI projections. After 2035, use the
-  // report's ultimate nominal wage-growth assumption instead of extending a
-  // recent historical CAGR forever.
+  // Rebase the 2026 Trustees Report's forecast path to SSA's actual 2025 AWI.
+  // Future-year values remain projections, not published SSA determinations.
+  const SSA_2025_TRUSTEES_AWI_ESTIMATE = 72025.07;
+  const SSA_AWI_REBASE = Base.averageWageIndexForYear(2025) / SSA_2025_TRUSTEES_AWI_ESTIMATE;
   const SSA_AWI_PROJECTED = Object.freeze({
-    2025: 72025.07,
     2026: 75246.70,
     2027: 78286.92,
     2028: 81537.43,
@@ -30,9 +30,11 @@
   });
   const SSA_ULTIMATE_AWI_GROWTH = 0.0357;
   const SSA_ULTIMATE_COLA = 0.024;
+  // Keys are the December effective year (paid the following January).
+  // December 2026's 3.6% adjustment is the published 2027 COLA.
   const SSA_COLA_PROJECTED = Object.freeze({
     2025: 0.028,
-    2026: 0.027,
+    2026: 0.036,
     2027: 0.024,
     2028: 0.024,
     2029: 0.024,
@@ -101,25 +103,25 @@
   }
 
   function projectedAwi(year) {
-    if (year <= 2024) return Base.averageWageIndexForYear(year);
-    if (SSA_AWI_PROJECTED[year]) return SSA_AWI_PROJECTED[year];
-    return SSA_AWI_PROJECTED[2035] * Math.pow(1 + SSA_ULTIMATE_AWI_GROWTH, year - 2035);
+    if (year <= 2025) return Base.averageWageIndexForYear(year);
+    if (SSA_AWI_PROJECTED[year]) return SSA_AWI_PROJECTED[year] * SSA_AWI_REBASE;
+    return SSA_AWI_PROJECTED[2035] * SSA_AWI_REBASE *
+      Math.pow(1 + SSA_ULTIMATE_AWI_GROWTH, year - 2035);
   }
 
   function projectedTaxableMax(year) {
-    if (year <= 2026) return Base.ssaTaxableMaxForYear(year);
-    const raw = 184500 * projectedAwi(year - 2) / projectedAwi(2024);
+    if (year <= 2027) return Base.ssaTaxableMaxForYear(year);
+    const raw = 192300 * projectedAwi(year - 2) / projectedAwi(2025);
     return Math.max(300, Math.round(raw / 300) * 300);
   }
 
   function projectedBendPoints(eligibilityYear) {
-    if (eligibilityYear <= 2026) return Base.bendPointsForEligibilityYear(eligibilityYear);
-    // SSA's bend points for a year of first eligibility are tied to the AWI
-    // two years earlier. 2026 bend points use the 2024 AWI.
-    const factor = projectedAwi(eligibilityYear - 2) / projectedAwi(2024);
+    if (eligibilityYear <= 2027) return Base.bendPointsForEligibilityYear(eligibilityYear);
+    // Exact SSA bend-point formula: 1979 base amounts indexed from 1977 AWI.
+    const indexedAwi = projectedAwi(eligibilityYear - 2);
     return [
-      Math.max(1, Math.round(1286 * factor)),
-      Math.max(2, Math.round(7749 * factor))
+      Math.max(1, Math.round(180 * indexedAwi / 9779.44)),
+      Math.max(2, Math.round(1085 * indexedAwi / 9779.44))
     ];
   }
 
@@ -245,7 +247,8 @@
       careerStartYear,
       stopWorkYear,
       earningsYearsModeled: indexedEarnings.length,
-      projectionMethod: '2026 Trustees intermediate AWI/COLA assumptions'
+      earningsTestMayApply: p.ssClaim < p.retirementAge && p.ssClaim < fullRetirementAge,
+      projectionMethod: 'Published SSA figures through 2027; rebased 2026 Trustees assumptions thereafter'
     };
   }
 
@@ -253,6 +256,54 @@
     if (!ss?.enabled || !Number.isFinite(ss.annualBenefitNominalAtClaim)) return 0;
     if (year <= ss.claimYear) return ss.annualBenefitNominalAtClaim;
     return ss.annualBenefitNominalAtClaim * ssaColaFactor(ss.claimYear, year);
+  }
+
+
+  // SSA annual retirement earnings test: $1 withheld per $2 above the lower
+  // limit, or per $3 above the higher limit in the year full retirement age
+  // is reached. Both limits are indexed by the AWI two calendar years earlier.
+  const SSA_EARNINGS_TEST_ACTUAL = Object.freeze({
+    2025: { underFRA: 23400, attainingFRA: 62160 },
+    2026: { underFRA: 24480, attainingFRA: 65160 },
+    2027: { underFRA: 25560, attainingFRA: 67920 }
+  });
+
+  function earningsTestLimitsForYear(year) {
+    if (SSA_EARNINGS_TEST_ACTUAL[year]) return SSA_EARNINGS_TEST_ACTUAL[year];
+    const ratio = projectedAwi(year - 2) / projectedAwi(2025);
+    return {
+      underFRA: Math.max(120, Math.round(25560 * ratio / 120) * 120),
+      attainingFRA: Math.max(120, Math.round(67920 * ratio / 120) * 120)
+    };
+  }
+
+  function earningsTestForYear(p, ss, year, currentYear) {
+    const zero = { grossBeforeFRA: 0, withheld: 0, payableShare: 1, earnings: 0, limit: null, attainingFRA: false };
+    if (!ss?.enabled || p.ssClaim >= ss.fullRetirementAge) return zero;
+    const start = new Date(Date.UTC(year, 0, 1));
+    const end = new Date(Date.UTC(year + 1, 0, 1));
+    const fraBirthday = addYears(p.birth, ss.fullRetirementAge);
+    const fraMonth = new Date(Date.UTC(fraBirthday.getUTCFullYear(), fraBirthday.getUTCMonth(), 1));
+    const benefitStart = maxDate(start, ss.claimDate);
+    const beforeFraEnd = minDate(end, fraMonth);
+    if (beforeFraEnd <= benefitStart) return zero;
+
+    const grossBeforeFRA = socialSecurityAnnualNominalForYear(ss, year) *
+      yearFraction(benefitStart, beforeFraEnd);
+    const attainingFRA = fraMonth >= start && fraMonth < end;
+    // In the FRA year, only earnings before the FRA month are counted.
+    // In earlier years, count all wages for the calendar year, even if
+    // benefits were claimed or retirement occurred partway through it.
+    const workEnd = minDate(end, addYears(p.birth, p.retirementAge), attainingFRA ? fraMonth : end);
+    const earnings = salaryForYear(p, year, currentYear) *
+      overlap(start, end, start, workEnd);
+    const limits = earningsTestLimitsForYear(year);
+    const limit = attainingFRA ? limits.attainingFRA : limits.underFRA;
+    const withheld = Math.min(grossBeforeFRA, Math.max(0, earnings - limit) / (attainingFRA ? 3 : 2));
+    return {
+      grossBeforeFRA, withheld, earnings, limit, attainingFRA,
+      payableShare: grossBeforeFRA ? 1 - withheld / grossBeforeFRA : 1
+    };
   }
 
   function buildEvents(input, people, socialSecurity, trs) {
@@ -411,7 +462,13 @@
           if (end <= benefitStart) return;
           const benefitFraction = yearFraction(benefitStart, end);
           const annualNominal = socialSecurityAnnualNominalForYear(ss, benefitStart.getUTCFullYear());
-          ssIncome += annualNominal * benefitFraction;
+          const fraBirthday = addYears(p.birth, ss.fullRetirementAge);
+          const fraMonth = new Date(Date.UTC(fraBirthday.getUTCFullYear(), fraBirthday.getUTCMonth(), 1));
+          const beforeFraEnd = minDate(end, fraMonth);
+          const beforeFraFraction = beforeFraEnd > benefitStart ? yearFraction(benefitStart, beforeFraEnd) : 0;
+          const test = earningsTestForYear(p, ss, benefitStart.getUTCFullYear(), asOfDate.getUTCFullYear());
+          ssIncome += annualNominal *
+            (benefitFraction - beforeFraFraction + beforeFraFraction * test.payableShare);
         });
 
         if (trs?.eligible && end > trs.pensionStart) {
@@ -497,7 +554,7 @@
         asOfDate.getUTCFullYear(), ageAtYearEnd(people[0].birth, asOfDate.getUTCFullYear())
       ),
       ssaProjectionAssumptions: {
-        source: '2026 Trustees Report intermediate assumptions',
+        source: 'SSA published 2025 AWI and 2027 rules; 2026 Trustees forecast rebased to actual 2025 AWI',
         ultimateAwiGrowth: SSA_ULTIMATE_AWI_GROWTH,
         ultimateCola: SSA_ULTIMATE_COLA
       }
@@ -512,6 +569,9 @@
     projectedSocialSecurityAwi: projectedAwi,
     projectedSocialSecurityBendPoints: projectedBendPoints,
     projectedSocialSecurityCola: ssaColaForYear,
+    projectedSocialSecurityEarningsTestLimits: earningsTestLimitsForYear,
+    projectedSocialSecurityEarningsTest: earningsTestForYear,
+    __ssa2027PublishedPolicy: true,
     __todayDollarInputPolicy: true,
     __ssa2026ProjectionPolicy: true,
     __tieredEmployerMatchPolicy: true
