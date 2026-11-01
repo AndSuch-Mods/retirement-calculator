@@ -551,7 +551,7 @@ h1 {
 }
 
 /* Release date visible in browser and iOS home-screen mode. */
-.topbar-actions { display: flex; align-items: center; gap: 12px; }
+.topbar-actions { display: flex; align-items: center; justify-content: flex-end; gap: 12px; flex-wrap: wrap; }
 .app-updated { display: inline-flex; align-items: center; gap: 6px; color: var(--muted); font-size: 0.75rem; font-weight: 650; white-space: nowrap; }
 .app-updated svg { flex: 0 0 auto; }
 
@@ -582,3 +582,7 @@ h1 {
   .topbar-actions .button { font-size: .76rem; padding: 8px 10px; }
   .ssa-monthly-table { grid-template-columns: 34px minmax(74px, 1fr) minmax(78px, 1fr); gap: 6px; }
 }
+
+.app-refresh { border: 1px solid var(--brand); border-radius: 999px; background: var(--brand-soft); color: var(--brand-strong); font-size: .73rem; padding: 7px 9px; font-weight: 760; cursor: pointer; }
+.app-refresh[hidden] { display: none; }
+@media (max-width: 430px) { .topbar-actions { row-gap: 3px; } .app-refresh { font-size: .7rem; } }
