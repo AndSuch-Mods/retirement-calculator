@@ -61,8 +61,8 @@ assert.ok(adjusted.fraIncreasePct > 0);
 assert.equal(withoutArf.socialSecurity.ssaPaymentSummary.fraIncreasePct, 0);
 const july2033 = s => s.ssaSchedules[0].months.find(m => m.year === 2033 && m.month === 6);
 assert.ok(july2033(withArf).paid > july2033(withoutArf).paid);
-const may2032 = s => s.ssaSchedules[0].months.find(m => m.year === 2032 && m.month === 4);
-assert.equal(may2032(withArf).paid, may2032(withoutArf).paid);
+const april2032 = s => s.ssaSchedules[0].months.find(m => m.year === 2032 && m.month === 3);
+assert.equal(april2032(withArf).paid, april2032(withoutArf).paid);
 assert.ok(withArf.ssaSchedules[0].months.some(
   m => m.withheld > 0 && m.withheld < m.gross
 ));
