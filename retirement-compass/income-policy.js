@@ -390,7 +390,7 @@
         person: p, socialSecurity: socialSecurity[index], input, asOfDate,
         endDate: endDateForBenefits, addYears,
         benefitForYear: socialSecurityAnnualNominalForYear,
-        earningsLimitsForYear
+        earningsLimitsForYear: earningsTestLimitsForYear
       })
     );
     const events = [...new Map(
