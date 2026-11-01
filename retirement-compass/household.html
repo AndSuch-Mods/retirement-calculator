@@ -79,6 +79,7 @@
                   <summary>Customize monthly earnings or self-employment</summary>
                   <p class="ssa-help">Leave wages blank to use salary and retirement dates above. Enter actual or expected monthly <em>wages</em> only where different. Mark months with substantial self-employment services; generally more than 45 hours, or 15–45 hours in certain skilled work. These fields affect the Social Security earnings test, not 401(k) contributions or salary.</p>
                   <label class="field"><span>Year to customize (blank = claim year)</span><span class="input-wrap"><input id="ssaMonthlyOverrideYear" type="number" min="1900" max="2300" step="1" placeholder="Claim year"></span></label>
+                  <label class="field"><span>Net self-employment income in that year</span><span class="input-wrap"><input id="ssaNetSelfEmploymentYear" type="number" min="0" step="100" inputmode="decimal" placeholder="0"></span><small>Include net self-employment earnings in the earnings test. If this is the year you reach full retirement age, enter only earnings before your full-retirement-age month.</small></label>
                   <p class="ssa-help" id="ssaCustomYearNote"></p>
                   <div class="ssa-monthly-table" id="ssaMonthOverrides"></div>
                 </details>
@@ -129,6 +130,7 @@
                     <summary>Customize monthly earnings or self-employment</summary>
                     <p class="ssa-help">Leave wages blank for the projected salary. Mark months with substantial self-employment services. These entries affect the Social Security earnings test only.</p>
                     <label class="field"><span>Year to customize (blank = claim year)</span><span class="input-wrap"><input id="spouseSsaMonthlyOverrideYear" type="number" min="1900" max="2300" step="1" placeholder="Claim year"></span></label>
+                    <label class="field"><span>Net self-employment income in that year</span><span class="input-wrap"><input id="spouseSsaNetSelfEmploymentYear" type="number" min="0" step="100" inputmode="decimal" placeholder="0"></span><small>For a full-retirement-age year, enter only net earnings before that month.</small></label>
                     <p class="ssa-help" id="spouseSsaCustomYearNote"></p>
                     <div class="ssa-monthly-table" id="spouseSsaMonthOverrides"></div>
                   </details>
