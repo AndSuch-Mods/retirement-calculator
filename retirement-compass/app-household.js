@@ -16,7 +16,7 @@
   // Include the optional monthly SSA controls in normal input/reset handling.
   for (const prefix of ['ssa', 'spouseSsa']) {
     inputIds.push(prefix + 'UseMonthlyRule', prefix + 'ApplyFraAdjustment',
-      prefix + 'MonthlyOverrideYear');
+      prefix + 'MonthlyOverrideYear', prefix + 'NetSelfEmploymentYear');
     for (let m = 1; m <= 12; m += 1) {
       const n = String(m).padStart(2, '0');
       inputIds.push(prefix + 'WageOverride' + n, prefix + 'SelfEmploymentMonth' + n);
