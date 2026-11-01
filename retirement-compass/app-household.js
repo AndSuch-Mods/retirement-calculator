@@ -66,10 +66,10 @@
 
   function renderSocialSecurity(result){
     const ss=result.socialSecurity;
-    if(ss.enabled){$('socialSecurityEstimateInline').textContent=`About ${formatMoney(ss.monthlyBenefitReal)}/mo in today’s dollars`;$('socialSecurityEstimateDetail').textContent=`Claim age ${ss.claimAge}; modeled FRA ${ss.fullRetirementAge.toFixed(2)}; AIME about ${formatMoney(ss.aime)}/mo. Actual SSA earnings records will be more precise.`;}
+    if(ss.enabled){$('socialSecurityEstimateInline').textContent=`About ${formatMoney(ss.monthlyBenefitReal)}/mo in today’s dollars`;$('socialSecurityEstimateDetail').textContent=`Claim age ${ss.claimAge}; modeled FRA ${ss.fullRetirementAge.toFixed(2)}; AIME about ${formatMoney(ss.aime)}/mo. Actual SSA earnings records will be more precise.${ss.earningsTestMayApply ? ' Cash-flow projections include estimated earnings-test withholding before full retirement age.' : ''}`;}
     else{$('socialSecurityEstimateInline').textContent='Social Security estimate disabled';$('socialSecurityEstimateDetail').textContent='No Social Security income is included for you.';}
     const sss=result.spouseSocialSecurity;
-    if(result.spouse&&sss.enabled){$('spouseSocialSecurityEstimateInline').textContent=`About ${formatMoney(sss.monthlyBenefitReal)}/mo in today’s dollars`;$('spouseSocialSecurityEstimateDetail').textContent=`Claim age ${sss.claimAge}; modeled FRA ${sss.fullRetirementAge.toFixed(2)}. Montevallo wages are treated as Social Security-covered earnings.`;}
+    if(result.spouse&&sss.enabled){$('spouseSocialSecurityEstimateInline').textContent=`About ${formatMoney(sss.monthlyBenefitReal)}/mo in today’s dollars`;$('spouseSocialSecurityEstimateDetail').textContent=`Claim age ${sss.claimAge}; modeled FRA ${sss.fullRetirementAge.toFixed(2)}. Montevallo wages are treated as Social Security-covered earnings.${sss.earningsTestMayApply ? ' Cash-flow projections include estimated earnings-test withholding before full retirement age.' : ''}`;}
     else{$('spouseSocialSecurityEstimateInline').textContent='Spouse Social Security estimate disabled';$('spouseSocialSecurityEstimateDetail').textContent='No spouse Social Security income is included.';}
   }
 
