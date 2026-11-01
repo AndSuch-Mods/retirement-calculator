@@ -96,19 +96,47 @@
     else{pill.textContent='Needs adjustment';pill.classList.add('negative');$('statusHeadline').textContent='The modeled household portfolio runs out before the planning horizon.';$('statusExplanation').textContent=result.depletionDate?`The combined invested balance reaches $0 around ${formatDate(result.depletionDate)}.`:'The projected balance is below the modeled household need.';}
   }
 
-  function renderSsaAdvanced(ss, prefix){
+  function renderSsaPayments(schedule, prefix){
+    const select=$(prefix+'PaymentYear');
+    const target=$(prefix+'PaymentTable');
+    if(!schedule?.months?.length){
+      select.innerHTML='';
+      target.textContent='No benefits scheduled for this scenario.';
+      return;
+    }
+    const years=[...new Set(schedule.months.map(m=>m.year))];
+    const oldYear=Number(select.value);
+    const preferred=schedule.graceYear || schedule.years.find(y=>y.yearWithheld>0)?.year || years[0];
+    const current=years.includes(oldYear)?oldYear:preferred;
+    select.innerHTML=years.map(y=>`<option value="${y}">${y}</option>`).join('');
+    select.value=String(current);
+    const rows=schedule.months.filter(m=>m.year===current);
+    target.innerHTML=rows.map(m=>{
+      const status=!m.beforeFRA?'After full retirement age'
+        : schedule.graceYear===m.year && m.nonService?'Protected grace-year month'
+        : 'Annual earnings test';
+      return `<div class="ssa-payment-month">
+        <strong>${monthLabels[m.month]}</strong>
+        <span class="ssa-payment-values">Paid ${formatMoney(m.paid)} · Withheld ${formatMoney(m.withheld)}</span>
+        <span class="ssa-payment-meta">Gross ${formatMoney(m.gross)} · Wages ${formatMoney(m.wages)} · ${status}</span>
+      </div>`;
+    }).join('')||'No benefit months in this year.';
+  }
+
+  function renderSsaAdvanced(ss, prefix, schedule){
     const details=$(prefix + 'RuleSummary');
     const yearNote=$(prefix + 'CustomYearNote');
     if(!ss?.enabled){
       details.textContent='Enable Social Security to see the effect of these options.';
       yearNote.textContent='';
+      renderSsaPayments(null, prefix);
       return;
     }
     const info=ss.ssaPaymentSummary;
     const monthlyRule=$(prefix + 'UseMonthlyRule').checked;
     const fraAdjustment=$(prefix + 'ApplyFraAdjustment').checked;
     const yearInput=$(prefix + 'MonthlyOverrideYear').value;
-    const claimYear=ss.claimYear;
+    const claimYear=schedule?.months?.[0]?.year || ss.claimYear;
     yearNote.textContent=`Wages shown as Auto are projected. Editing ${yearInput || claimYear} changes the earnings-test estimate for that year only.`;
     if(!info){
       details.textContent='No monthly payment estimate available.';
@@ -124,6 +152,7 @@
         : 'No benefit increase from withheld months is projected.')
       : 'Full-retirement-age benefit adjustment turned off.';
     details.textContent=`${grace} ${adjustment} SSA determines actual withholding and payment dates.`;
+    renderSsaPayments(schedule, prefix);
   }
 
   function renderSocialSecurity(result){
@@ -135,7 +164,7 @@
       $('socialSecurityEstimateInline').textContent='Social Security estimate disabled';
       $('socialSecurityEstimateDetail').textContent='No Social Security income is included for you.';
     }
-    renderSsaAdvanced(ss, 'ssa');
+    renderSsaAdvanced(ss, 'ssa', result.ssaSchedules[0]);
     const sss=result.spouseSocialSecurity;
     if(result.spouse&&sss.enabled){
       $('spouseSocialSecurityEstimateInline').textContent=`About ${formatMoney(sss.monthlyBenefitReal)}/mo gross at claim, in today’s dollars`;
@@ -144,7 +173,7 @@
       $('spouseSocialSecurityEstimateInline').textContent='Spouse Social Security estimate disabled';
       $('spouseSocialSecurityEstimateDetail').textContent='No spouse Social Security income is included.';
     }
-    renderSsaAdvanced(sss, 'spouseSsa');
+    renderSsaAdvanced(sss, 'spouseSsa', result.ssaSchedules[1]);
   }
 
   function ongoingAnnualSocialSecurity(ss){
@@ -217,6 +246,9 @@
 
   function attachListeners(){
     inputIds.forEach(id=>{const el=$(id);if(!el)return;el.addEventListener('input',calculateAndRender);el.addEventListener('change',calculateAndRender);});
+    for (const prefix of ['ssa', 'spouseSsa']) {
+      $(prefix+'PaymentYear')?.addEventListener('change', calculateAndRender);
+    }
     document.querySelectorAll('[data-display-mode]').forEach(btn=>btn.addEventListener('click',()=>{displayState.mode=btn.dataset.displayMode;document.querySelectorAll('[data-display-mode]').forEach(b=>b.classList.toggle('is-active',b===btn));calculateAndRender();}));
     $('resetButton').addEventListener('click',()=>{setFormValues(Model.DEFAULTS);displayState.mode='real';document.querySelectorAll('[data-display-mode]').forEach(b=>b.classList.toggle('is-active',b.dataset.displayMode==='real'));calculateAndRender();});
   }
