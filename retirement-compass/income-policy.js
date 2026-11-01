@@ -53,6 +53,7 @@
     SSA_ADVANCED_DEFAULTS[prefix + 'UseMonthlyRule'] = true;
     SSA_ADVANCED_DEFAULTS[prefix + 'ApplyFraAdjustment'] = true;
     SSA_ADVANCED_DEFAULTS[prefix + 'MonthlyOverrideYear'] = '';
+    SSA_ADVANCED_DEFAULTS[prefix + 'NetSelfEmploymentYear'] = '';
     for (let month = 1; month <= 12; month += 1) {
       const number = String(month).padStart(2, '0');
       SSA_ADVANCED_DEFAULTS[prefix + 'WageOverride' + number] = '';
@@ -104,6 +105,7 @@
       monthlyRule: input[prefix + 'UseMonthlyRule'],
       fraAdjustment: input[prefix + 'ApplyFraAdjustment'],
       overrideYear: input[prefix + 'MonthlyOverrideYear'] || null,
+      netSelfEmployment: Number(input[prefix + 'NetSelfEmploymentYear']) || 0,
       wages: Array.from({ length: 12 }, (_, m) => {
         const v = input[prefix + 'WageOverride' + String(m + 1).padStart(2, '0')];
         return v === '' ? null : v;
