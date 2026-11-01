@@ -5,7 +5,8 @@
 })(typeof globalThis !== 'undefined' ? globalThis : this, function () {
   'use strict';
 
-  const RULES_BASE_YEAR = 2026;
+  const RULES_BASE_YEAR = 2026; // IRS base year; 2027 limits are still projections.
+  const SSA_LATEST_PUBLISHED_RULE_YEAR = 2027;
   const SSA_AWI_GROWTH = 0.041565236170168385; // 2014-2024 CAGR
   const IRS_DEFERRAL_GROWTH = 0.03131030647754507; // 2016-2026 CAGR
   const IRS_CATCHUP_GROWTH = 0.029186008964760646;
@@ -46,7 +47,7 @@
     2010: 41673.83, 2011: 42979.61, 2012: 44321.67, 2013: 44888.16,
     2014: 46481.52, 2015: 48098.63, 2016: 48642.15, 2017: 50321.89,
     2018: 52145.80, 2019: 54099.99, 2020: 55628.60, 2021: 60575.07,
-    2022: 63795.13, 2023: 66621.80, 2024: 69846.57
+    2022: 63795.13, 2023: 66621.80, 2024: 69846.57, 2025: 72800.33
   });
 
   const SSA_TAXABLE_MAX_HISTORY = Object.freeze({
@@ -58,14 +59,14 @@
     2007: 97500, 2008: 102000, 2009: 106800, 2010: 106800, 2011: 106800,
     2012: 110100, 2013: 113700, 2014: 117000, 2015: 118500, 2016: 118500,
     2017: 127200, 2018: 128400, 2019: 132900, 2020: 137700, 2021: 142800,
-    2022: 147000, 2023: 160200, 2024: 168600, 2025: 176100, 2026: 184500
+    2022: 147000, 2023: 160200, 2024: 168600, 2025: 176100, 2026: 184500, 2027: 192300
   });
 
   const PIA_BEND_POINTS = Object.freeze({
     2016: [856, 5157], 2017: [885, 5336], 2018: [895, 5397],
     2019: [926, 5583], 2020: [960, 5785], 2021: [996, 6002],
     2022: [1024, 6172], 2023: [1115, 6721], 2024: [1174, 7078],
-    2025: [1226, 7391], 2026: [1286, 7749]
+    2025: [1226, 7391], 2026: [1286, 7749], 2027: [1340, 8077]
   });
 
   const IRS_LIMIT_HISTORY = Object.freeze({
@@ -155,21 +156,21 @@
 
   function averageWageIndexForYear(year) {
     if (AWI_HISTORY[year]) return AWI_HISTORY[year];
-    if (year > 2024) return AWI_HISTORY[2024] * Math.pow(1 + SSA_AWI_GROWTH, year - 2024);
+    if (year > 2025) return AWI_HISTORY[2025] * Math.pow(1 + SSA_AWI_GROWTH, year - 2025);
     return AWI_HISTORY[1982] / Math.pow(1 + SSA_AWI_GROWTH, 1982 - year);
   }
 
   function ssaTaxableMaxForYear(year) {
     if (SSA_TAXABLE_MAX_HISTORY[year]) return SSA_TAXABLE_MAX_HISTORY[year];
-    if (year > RULES_BASE_YEAR) {
-      return roundStep(SSA_TAXABLE_MAX_HISTORY[RULES_BASE_YEAR] * Math.pow(1 + SSA_AWI_GROWTH, year - RULES_BASE_YEAR), 300);
+    if (year > SSA_LATEST_PUBLISHED_RULE_YEAR) {
+      return roundStep(SSA_TAXABLE_MAX_HISTORY[SSA_LATEST_PUBLISHED_RULE_YEAR] * Math.pow(1 + SSA_AWI_GROWTH, year - SSA_LATEST_PUBLISHED_RULE_YEAR), 300);
     }
     return roundStep(SSA_TAXABLE_MAX_HISTORY[1982] / Math.pow(1 + SSA_AWI_GROWTH, 1982 - year), 300);
   }
 
   function bendPointsForEligibilityYear(year) {
     if (PIA_BEND_POINTS[year]) return PIA_BEND_POINTS[year];
-    const anchorYear = year > RULES_BASE_YEAR ? RULES_BASE_YEAR : 2016;
+    const anchorYear = year > SSA_LATEST_PUBLISHED_RULE_YEAR ? SSA_LATEST_PUBLISHED_RULE_YEAR : 2016;
     const anchor = PIA_BEND_POINTS[anchorYear];
     const factor = Math.pow(1 + SSA_AWI_GROWTH, year - anchorYear);
     return [Math.max(1, Math.round(anchor[0] * factor)), Math.max(2, Math.round(anchor[1] * factor))];
