@@ -87,8 +87,13 @@
       }
       const attainingFRA = fraMonth.getUTCFullYear() === year;
       const limit = earningsLimitsForYear(year)[attainingFRA ? 'attainingFRA' : 'underFRA'];
+      // Net earnings from self-employment also count toward the annual test.
+      // In the FRA year, the entered amount should cover pre-FRA months only.
+      const netSelfEmployment = year === customYear
+        ? Math.max(0, Number(rules.netSelfEmployment) || 0) : 0;
       const testEarnings = monthData.reduce((sum, month) =>
-        sum + (!attainingFRA || month.beforeFRA ? month.wages : 0), 0);
+        sum + (!attainingFRA || month.beforeFRA ? month.wages : 0), 0) +
+        netSelfEmployment;
       const annualWithholding = Math.max(0, (testEarnings - limit) / (attainingFRA ? 3 : 2));
       const monthlyLimit = limit / 12;
       for (const month of monthData) {
