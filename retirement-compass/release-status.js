@@ -26,9 +26,9 @@
       if (latestId && loadedId && latestId !== loadedId) {
         refresh.hidden = false;
         refresh.title = 'Reload the updated retirement calculator';
-        refresh.addEventListener('click', () => {
+        refresh.onclick = () => {
           window.location.replace('./household.html?release=' + encodeURIComponent(latestId));
-        }, { once: true });
+        };
       }
     } catch (_) {
       // Offline home-screen apps keep showing their installed release date.
