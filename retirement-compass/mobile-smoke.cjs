@@ -68,7 +68,7 @@ async function run(browserType) {
     assert.ok(controlFonts.checked >= 20, 'Expected to inspect regular and dynamic form controls');
     assert.deepEqual(controlFonts.tooSmall, [],
       'Focus would trigger iOS page auto-zoom on undersized controls');
-    assert.ok(!/maximum-scale\\s*=|user-scalable\\s*=\\s*no/i.test(controlFonts.viewport),
+    assert.ok(!/maximum-scale\s*=|user-scalable\s*=\s*no/i.test(controlFonts.viewport),
       'Do not prevent accessibility pinch-to-zoom using the viewport meta tag');
 
     await page.locator('#plannerSectionYou > summary').click();
