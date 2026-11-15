@@ -30,9 +30,13 @@
       themeColor.name = 'theme-color';
       document.head.appendChild(themeColor);
     }
+    // Only write a changed attribute. A MutationObserver observes these
+    // attributes, and writing the same value again triggers another mutation
+    // in WebKit/Chromium. Unconditional writes create an infinite microtask
+    // loop when another script sets color-scheme, freezing mobile scrolling.
     const keepDark = () => {
-      themeColor.content = '#0b100e';
-      colorScheme.content = 'dark';
+      if (themeColor.content !== '#0b100e') themeColor.content = '#0b100e';
+      if (colorScheme.content !== 'dark') colorScheme.content = 'dark';
     };
     keepDark();
     const observer = new MutationObserver(keepDark);
