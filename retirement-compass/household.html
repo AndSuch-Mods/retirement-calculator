@@ -19,7 +19,7 @@
     <div class="topbar-actions">
       <span class="app-updated" title="Version currently loaded on this device">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 2v4M16 2v4M3 10h18"/><rect x="3" y="4" width="18" height="18" rx="2"/></svg>
-        <time id="appUpdated" datetime="2026-11-01" data-release-id="20261101-ssa-monthly-arf">Updated Nov 1, 2026</time>
+        <time id="appUpdated" datetime="2026-11-15" data-release-id="20261115-irs-ssa-trs">Updated Nov 15, 2026</time>
       </span>
       <button class="app-refresh" id="appRefresh" type="button" hidden>New update available</button>
       <button class="button button-quiet" id="resetButton" type="button">Reset example</button>
@@ -72,6 +72,9 @@
             <details class="ssa-advanced" id="ssaAdvancedPanel">
               <summary><span><strong>Detailed Social Security rules</strong><small>First-year monthly rule and benefit increase at full retirement age</small></span><span class="chevron" aria-hidden="true">⌄</span></summary>
               <div class="ssa-advanced-body">
+                  <div class="field-grid field-grid-2">
+                    <label class="field"><span>Your Social Security credits through last year (optional)</span><span class="input-wrap"><input id="ssaCreditsThroughPriorYear" type="number" min="0" max="40" step="1" placeholder="Estimate"></span><small>Use credits shown on the SSA record through the previous calendar year. The calculator estimates current and future credits. Leave blank to estimate all years.</small></label>
+                  </div>
                 <label class="switch-row ssa-setting" for="ssaUseMonthlyRule"><span><strong>Apply the special monthly earnings rule</strong><small>Protects qualifying low-earnings months in the first year with a non-working month, even when annual earnings exceed the limit.</small></span><span class="switch"><input type="checkbox" id="ssaUseMonthlyRule"><span aria-hidden="true"></span></span></label>
                 <label class="switch-row ssa-setting" for="ssaApplyFraAdjustment"><span><strong>Recalculate benefits at full retirement age</strong><small>Credits months with full or partial earnings-test withholding, increasing the ongoing early-claim benefit.</small></span><span class="switch"><input type="checkbox" id="ssaApplyFraAdjustment"><span aria-hidden="true"></span></span></label>
                 <p class="ssa-rule-summary" id="ssaRuleSummary">Analyzing Social Security monthly rules…</p>
@@ -129,6 +132,9 @@
               <details class="ssa-advanced" id="spouseSsaAdvancedPanel">
                 <summary><span><strong>Detailed Social Security rules</strong><small>First-year monthly rule and benefit increase at full retirement age</small></span><span class="chevron" aria-hidden="true">⌄</span></summary>
                 <div class="ssa-advanced-body">
+                  <div class="field-grid field-grid-2">
+                    <label class="field"><span>Spouse Social Security credits through last year (optional)</span><span class="input-wrap"><input id="spouseSsaCreditsThroughPriorYear" type="number" min="0" max="40" step="1" placeholder="Estimate"></span><small>Use credits shown on the SSA record through the previous calendar year. The calculator estimates current and future credits. Leave blank to estimate all years.</small></label>
+                  </div>
                   <label class="switch-row ssa-setting" for="spouseSsaUseMonthlyRule"><span><strong>Apply the special monthly earnings rule</strong><small>Protects qualifying low-earnings months in the first applicable grace year.</small></span><span class="switch"><input type="checkbox" id="spouseSsaUseMonthlyRule"><span aria-hidden="true"></span></span></label>
                   <label class="switch-row ssa-setting" for="spouseSsaApplyFraAdjustment"><span><strong>Recalculate benefits at full retirement age</strong><small>Credits months with full or partial earnings-test withholding.</small></span><span class="switch"><input type="checkbox" id="spouseSsaApplyFraAdjustment"><span aria-hidden="true"></span></span></label>
                   <p class="ssa-rule-summary" id="spouseSsaRuleSummary">Analyzing Social Security monthly rules…</p>
@@ -158,6 +164,10 @@
               <div class="field-grid field-grid-2">
                 <label class="field"><span>TRS tier</span><span class="input-wrap select-wrap"><select id="spouseTrsTier"><option value="2">Tier 2 — first RSA-covered service 2013 or later</option><option value="1">Tier 1 — RSA service before 2013</option></select></span></label>
                 <label class="field"><span>Current creditable TRS service</span><span class="input-wrap"><input id="spouseTrsCurrentServiceYears" type="number" min="0" max="60" step="0.25"><span class="suffix">years</span></span><small>Use the service credit on the RSA statement; include purchased credit already on record.</small></label>
+              </div>
+              <div class="field-grid field-grid-2">
+                <label class="field"><span>Future TRS service credit earned</span><span class="input-wrap"><input id="spouseTrsFutureServicePct" type="number" min="0" max="100" step="1"><span class="suffix">% full time</span></span><small>100% assumes one service year per full year worked. Reduce for part-time or prorated service.</small></label>
+                <label class="field"><span>Additional approved federal service credit</span><span class="input-wrap"><input id="spouseTrsPlannedFederalServiceYears" type="number" min="0" max="4" step="1"><span class="suffix">years</span></span><small>Enter only approved, purchased full-year credit not yet reflected on the RSA statement. Act 2026-525 requires at least 10 contributing years, federal certification, full payment and other restrictions. If RSA approves a fractional final year, use the credit recorded on your statement.</small></label>
               </div>
               <div class="rules-note trs-result-note"><strong id="trsEstimateInline">Estimating Alabama TRS…</strong><span id="trsEstimateDetail"></span></div>
             </div>
@@ -221,15 +231,15 @@
       <article class="detail-card"><p class="card-label">Real retirement return</p><h3 id="realReturnResult">—</h3><p>Portfolio return after the inflation assumption, once both spouses are retired.</p></article>
     </section>
 
-    <footer class="disclaimer"><strong>Planning estimate, not financial or pension advice.</strong><span>Social Security is reconstructed from estimated earnings rather than an SSA earnings record. Alabama TRS uses current maximum-benefit formulas and projected salary/service; actual RSA service credit, final compensation, survivor-option reductions, sick-leave conversions, future legislative changes, taxes, health-insurance costs, RMDs, and special 403(b)/457 catch-up rules may change actual results. Social Security monthly withholding and full-retirement-age benefit adjustments use estimated wages and user overrides. These figures are not an SSA award calculation; actual covered earnings, non-wage earnings, the exact SSA claiming month, additional earnings recomputations, family benefits, benefit payment timing, and special benefit rules can change actual amounts.</span></footer>
+    <footer class="disclaimer"><strong>Planning estimate, not financial or pension advice.</strong><span>Social Security is reconstructed from estimated earnings rather than an SSA earnings record. Alabama TRS uses projected July–June compensation and optional prorated/purchased service; actual RSA service credit, final compensation, survivor-option reductions, sick-leave conversions, future legislative changes, taxes, health-insurance costs, RMDs, and special 403(b)/457 catch-up rules may change actual results. Social Security work-credit eligibility is estimated unless you enter credits from your SSA record. Social Security monthly withholding and full-retirement-age benefit adjustments use estimated wages and user overrides. These figures are not an SSA award calculation; actual covered earnings, non-wage earnings, the exact SSA claiming month, additional earnings recomputations, family benefits, benefit payment timing, and special benefit rules can change actual amounts.</span></footer>
   </main>
 
-  <script src="model.js?v=20261101-ssa"></script>
-  <script src="household.js"></script>
-  <script src="income-policy.js?v=20261101-advanced"></script>
+  <script src="model.js?v=20261115-rules"></script>
+  <script src="household.js?v=20261115-rules"></script>
+  <script src="income-policy.js?v=20261115-rules"></script>
   <script src="ssa-benefit-schedule.js?v=20261101-advanced"></script>
   <script src="enhancements.js"></script>
-  <script src="app-household.js?v=20261101-advanced"></script>
+  <script src="app-household.js?v=20261115-rules"></script>
   <script src="income-clarity.js"></script>
   <script src="display-policy.js"></script>
   <script src="release-status.js?v=20261101-advanced"></script>

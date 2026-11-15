@@ -2,6 +2,7 @@ const assert = require('node:assert/strict');
 require('./model.js');
 require('./household.js');
 require('./income-policy.js');
+require('./ssa-benefit-schedule.js');
 
 const Base = globalThis.RetirementModel;
 const Compass = globalThis.HouseholdModel;

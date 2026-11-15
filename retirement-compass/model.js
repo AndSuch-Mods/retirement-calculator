@@ -5,7 +5,8 @@
 })(typeof globalThis !== 'undefined' ? globalThis : this, function () {
   'use strict';
 
-  const RULES_BASE_YEAR = 2026; // IRS base year; 2027 limits are still projections.
+  const RULES_BASE_YEAR = 2026; // Calendar-year starting point for the stand-alone projection.
+  const IRS_LATEST_PUBLISHED_RULE_YEAR = 2027; // IRS Notice 2026-66, published Nov. 12, 2026.
   const SSA_LATEST_PUBLISHED_RULE_YEAR = 2027;
   const SSA_AWI_GROWTH = 0.041565236170168385; // 2014-2024 CAGR
   const IRS_DEFERRAL_GROWTH = 0.03131030647754507; // 2016-2026 CAGR
@@ -62,6 +63,21 @@
     2022: 147000, 2023: 160200, 2024: 168600, 2025: 176100, 2026: 184500, 2027: 192300
   });
 
+  // SSA official annual earnings required for one Social Security work credit.
+  // Before 1978, covered quarters followed different rules and are not inferred here.
+  const SSA_CREDIT_EARNINGS_HISTORY = Object.freeze({
+    1978: 250, 1979: 260, 1980: 290, 1981: 310, 1982: 340,
+    1983: 370, 1984: 390, 1985: 410, 1986: 440, 1987: 460,
+    1988: 470, 1989: 500, 1990: 520, 1991: 540, 1992: 570,
+    1993: 590, 1994: 620, 1995: 630, 1996: 640, 1997: 670,
+    1998: 700, 1999: 740, 2000: 780, 2001: 830, 2002: 870,
+    2003: 890, 2004: 900, 2005: 920, 2006: 970, 2007: 1000,
+    2008: 1050, 2009: 1090, 2010: 1120, 2011: 1120, 2012: 1130,
+    2013: 1160, 2014: 1200, 2015: 1220, 2016: 1260, 2017: 1300,
+    2018: 1320, 2019: 1360, 2020: 1410, 2021: 1470, 2022: 1510,
+    2023: 1640, 2024: 1730, 2025: 1810, 2026: 1890, 2027: 1970
+  });
+
   const PIA_BEND_POINTS = Object.freeze({
     2016: [856, 5157], 2017: [885, 5336], 2018: [895, 5397],
     2019: [926, 5583], 2020: [960, 5785], 2021: [996, 6002],
@@ -80,7 +96,8 @@
     2023: { deferral: 22500, catchup: 7500, enhancedCatchup: 7500, overall: 66000, compensation: 330000 },
     2024: { deferral: 23000, catchup: 7500, enhancedCatchup: 7500, overall: 69000, compensation: 345000 },
     2025: { deferral: 23500, catchup: 7500, enhancedCatchup: 11250, overall: 70000, compensation: 350000 },
-    2026: { deferral: 24500, catchup: 8000, enhancedCatchup: 11250, overall: 72000, compensation: 360000 }
+    2026: { deferral: 24500, catchup: 8000, enhancedCatchup: 11250, overall: 72000, compensation: 360000, rothCatchupWageThreshold: 150000 },
+    2027: { deferral: 25500, catchup: 8500, enhancedCatchup: 11750, overall: 75000, compensation: 375000, rothCatchupWageThreshold: 155000 }
   });
 
   const clamp = (value, min, max) => Math.min(Math.max(value, min), max);
@@ -168,6 +185,15 @@
     return roundStep(SSA_TAXABLE_MAX_HISTORY[1982] / Math.pow(1 + SSA_AWI_GROWTH, 1982 - year), 300);
   }
 
+  function ssaCreditEarningsForYear(year) {
+    if (year < 1978) return null; // Pre-1978 credits cannot be inferred from annual salary.
+    if (SSA_CREDIT_EARNINGS_HISTORY[year]) return SSA_CREDIT_EARNINGS_HISTORY[year];
+    // Forecast only; SSA has published actual annual thresholds through 2027.
+    return Math.max(1970, roundStep(
+      1970 * averageWageIndexForYear(year - 2) / AWI_HISTORY[2025], 10
+    ));
+  }
+
   function bendPointsForEligibilityYear(year) {
     if (PIA_BEND_POINTS[year]) return PIA_BEND_POINTS[year];
     const anchorYear = year > SSA_LATEST_PUBLISHED_RULE_YEAR ? SSA_LATEST_PUBLISHED_RULE_YEAR : 2016;
@@ -190,15 +216,16 @@
         compensation: roundStep(265000 / Math.pow(1 + IRS_COMP_GROWTH, years), 5000)
       };
     }
-    const years = year - RULES_BASE_YEAR;
+    const years = year - IRS_LATEST_PUBLISHED_RULE_YEAR;
     return {
       year,
       estimated: true,
-      deferral: roundStep(24500 * Math.pow(1 + IRS_DEFERRAL_GROWTH, years), 500),
-      catchup: roundStep(8000 * Math.pow(1 + IRS_CATCHUP_GROWTH, years), 500),
-      enhancedCatchup: roundStep(11250 * Math.pow(1 + IRS_CATCHUP_GROWTH, years), 250),
-      overall: roundStep(72000 * Math.pow(1 + IRS_OVERALL_GROWTH, years), 1000),
-      compensation: roundStep(360000 * Math.pow(1 + IRS_COMP_GROWTH, years), 5000)
+      deferral: roundStep(25500 * Math.pow(1 + IRS_DEFERRAL_GROWTH, years), 500),
+      catchup: roundStep(8500 * Math.pow(1 + IRS_CATCHUP_GROWTH, years), 500),
+      enhancedCatchup: roundStep(11750 * Math.pow(1 + IRS_CATCHUP_GROWTH, years), 250),
+      overall: roundStep(75000 * Math.pow(1 + IRS_OVERALL_GROWTH, years), 1000),
+      compensation: roundStep(375000 * Math.pow(1 + IRS_COMP_GROWTH, years), 5000),
+      rothCatchupWageThreshold: roundStep(155000 * Math.pow(1 + IRS_COMP_GROWTH, years), 5000)
     };
   }
 
@@ -637,6 +664,7 @@
     contributionRateForYear,
     averageWageIndexForYear,
     ssaTaxableMaxForYear,
+    ssaCreditEarningsForYear,
     bendPointsForEligibilityYear,
     irsLimitsForYear,
     contributionLimitsForEmployee,

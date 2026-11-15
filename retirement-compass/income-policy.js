@@ -53,6 +53,7 @@
     SSA_ADVANCED_DEFAULTS[prefix + 'UseMonthlyRule'] = true;
     SSA_ADVANCED_DEFAULTS[prefix + 'ApplyFraAdjustment'] = true;
     SSA_ADVANCED_DEFAULTS[prefix + 'MonthlyOverrideYear'] = '';
+    SSA_ADVANCED_DEFAULTS[prefix + 'CreditsThroughPriorYear'] = '';
     SSA_ADVANCED_DEFAULTS[prefix + 'NetSelfEmploymentYear'] = '';
     for (let month = 1; month <= 12; month += 1) {
       const number = String(month).padStart(2, '0');
@@ -82,7 +83,9 @@
     for (const [field, fallback] of Object.entries(SSA_ADVANCED_DEFAULTS)) {
       const value = domFallback(raw, field, fallback);
       if (typeof fallback === 'boolean') advanced[field] = value === true || value === 'true';
-      else if (field.endsWith('OverrideYear')) {
+      else if (field.endsWith('CreditsThroughPriorYear')) {
+        advanced[field] = value === '' || value == null ? '' : Math.round(clamp(value, 0, 40));
+      } else if (field.endsWith('OverrideYear')) {
         advanced[field] = value === '' || value == null ? '' :
           Math.round(clamp(value, 1900, 2300));
       } else {
@@ -105,6 +108,8 @@
       monthlyRule: input[prefix + 'UseMonthlyRule'],
       fraAdjustment: input[prefix + 'ApplyFraAdjustment'],
       overrideYear: input[prefix + 'MonthlyOverrideYear'] || null,
+      knownCreditsThroughPriorYear: input[prefix + 'CreditsThroughPriorYear'] === ''
+        ? null : Number(input[prefix + 'CreditsThroughPriorYear']),
       netSelfEmployment: Number(input[prefix + 'NetSelfEmploymentYear']) || 0,
       wages: Array.from({ length: 12 }, (_, m) => {
         const v = input[prefix + 'WageOverride' + String(m + 1).padStart(2, '0')];
@@ -242,6 +247,9 @@
     const claimYear = claimDate.getUTCFullYear();
     const indexingAwi = projectedAwi(indexingYear);
     const indexedEarnings = [];
+    let modeledPastCredits = 0;
+    let modeledFutureCredits = 0;
+    let uncertainPre1978Credits = false;
 
     for (let year = careerStartYear; year <= stopWorkYear; year += 1) {
       let salary = salaryForYear(p, year, currentYear);
@@ -251,9 +259,28 @@
         salary *= overlap(start, end, start, retirementDate);
       }
       const covered = Math.min(salary, projectedTaxableMax(year));
+      // Retirement benefits generally require 40 credits from covered earnings.
+      // Do not count credit acquired after the intended claiming year.
+      if (year <= claimYear) {
+        const threshold = Base.ssaCreditEarningsForYear(year);
+        if (threshold == null) uncertainPre1978Credits = true;
+        else {
+          const credits = Math.min(4, Math.floor(covered / threshold));
+          if (year < currentYear) modeledPastCredits += credits;
+          else modeledFutureCredits += credits;
+        }
+      }
       const indexed = year < indexingYear ? covered * indexingAwi / projectedAwi(year) : covered;
       indexedEarnings.push(Math.max(indexed, 0));
     }
+
+    const enteredPastCredits = p.ssRules.knownCreditsThroughPriorYear;
+    const estimatedWorkCredits = enteredPastCredits !== null
+      ? Math.min(40, enteredPastCredits + modeledFutureCredits)
+      : uncertainPre1978Credits ? null : Math.min(40, modeledPastCredits + modeledFutureCredits);
+    const insufficientCredits = estimatedWorkCredits !== null && estimatedWorkCredits < 40;
+    const workCreditMethod = enteredPastCredits !== null ? 'entered past + projected future'
+      : uncertainPre1978Credits ? 'pre-1978 history not inferred' : 'estimated from modeled wages';
 
     indexedEarnings.sort((a, b) => b - a);
     const top35 = indexedEarnings.slice(0, 35);
@@ -268,7 +295,7 @@
     const fullRetirementAge = Base.fullRetirementAgeForBirthYear(birthYear);
     const claimFactor = Base.socialSecurityClaimFactor(p.ssClaim, fullRetirementAge);
     const piaAtClaim = piaAtEligibility * ssaColaFactor(eligibilityYear, claimYear);
-    const monthlyBenefitNominalAtClaim = piaAtClaim * claimFactor;
+    const monthlyBenefitNominalAtClaim = insufficientCredits ? 0 : piaAtClaim * claimFactor;
     const generalInflationFactor = Math.pow(
       1 + input.inflationPct / 100,
       Math.max(yearsBetween(asOfDate, claimDate), 0)
@@ -294,6 +321,7 @@
       careerStartYear,
       stopWorkYear,
       earningsYearsModeled: indexedEarnings.length,
+      estimatedWorkCredits, insufficientCredits, workCreditMethod,
       earningsTestMayApply: p.ssClaim < p.retirementAge && p.ssClaim < fullRetirementAge,
       projectionMethod: 'Published SSA figures through 2027; rebased 2026 Trustees assumptions thereafter'
     };

@@ -11,11 +11,13 @@
     'spouseEmployeeContributionPct','spouseSalaryGrowthPct','spouseAutoIncreaseEnabled','spouseAutoIncreasePctPoints',
     'spouseMaxEmployeeContributionPct','spouseVoluntaryPlanType','spouseSocialSecurityEnabled','spouseSocialSecurityClaimAge',
     'spouseSocialSecurityCareerStartAge','spouseTrsEnabled','spouseTrsTier','spouseTrsCurrentServiceYears',
+    'spouseTrsFutureServicePct','spouseTrsPlannedFederalServiceYears',
     'desiredSpending','otherRetirementIncome','preRetirementReturnPct','retirementReturnPct','inflationPct'
   ];
   // Include the optional monthly SSA controls in normal input/reset handling.
   for (const prefix of ['ssa', 'spouseSsa']) {
     inputIds.push(prefix + 'UseMonthlyRule', prefix + 'ApplyFraAdjustment',
+      prefix + 'CreditsThroughPriorYear',
       prefix + 'MonthlyOverrideYear', prefix + 'NetSelfEmploymentYear');
     for (let m = 1; m <= 12; m += 1) {
       const n = String(m).padStart(2, '0');
@@ -157,18 +159,26 @@
 
   function renderSocialSecurity(result){
     const ss=result.socialSecurity;
-    if(ss.enabled){
+    if(ss.enabled && ss.insufficientCredits){
+      $('socialSecurityEstimateInline').textContent='No own-record benefit modeled: fewer than 40 Social Security credits';
+      $('socialSecurityEstimateDetail').textContent=`${ss.estimatedWorkCredits}/40 credits projected by claim year (${ss.workCreditMethod}). Check your actual work credits with Social Security; some earnings records may differ from this estimate.`;
+    } else if(ss.enabled){
       $('socialSecurityEstimateInline').textContent=`About ${formatMoney(ss.monthlyBenefitReal)}/mo gross at claim, in today’s dollars`;
-      $('socialSecurityEstimateDetail').textContent=`Claim age ${ss.claimAge}; modeled FRA ${ss.fullRetirementAge.toFixed(2)}; AIME about ${formatMoney(ss.aime)}/mo. Earnings-test withholding can reduce payments before FRA. Actual SSA earnings records will be more precise.`;
+      const creditNote=ss.estimatedWorkCredits===null?'Work-credit eligibility not verified.':`${ss.estimatedWorkCredits}/40 work credits projected by claim year (${ss.workCreditMethod}).`;
+      $('socialSecurityEstimateDetail').textContent=`Claim age ${ss.claimAge}; modeled FRA ${ss.fullRetirementAge.toFixed(2)}; AIME about ${formatMoney(ss.aime)}/mo. ${creditNote} Earnings-test withholding can reduce payments before FRA. Actual SSA earnings records will be more precise.`;
     } else {
       $('socialSecurityEstimateInline').textContent='Social Security estimate disabled';
       $('socialSecurityEstimateDetail').textContent='No Social Security income is included for you.';
     }
     renderSsaAdvanced(ss, 'ssa', result.ssaSchedules[0]);
     const sss=result.spouseSocialSecurity;
-    if(result.spouse&&sss.enabled){
+    if(result.spouse&&sss.enabled&&sss.insufficientCredits){
+      $('spouseSocialSecurityEstimateInline').textContent='No own-record benefit modeled: fewer than 40 Social Security credits';
+      $('spouseSocialSecurityEstimateDetail').textContent=`${sss.estimatedWorkCredits}/40 credits projected by claim year (${sss.workCreditMethod}). Verify spouse credits with SSA; the income model uses estimated covered earnings.`;
+    } else if(result.spouse&&sss.enabled){
       $('spouseSocialSecurityEstimateInline').textContent=`About ${formatMoney(sss.monthlyBenefitReal)}/mo gross at claim, in today’s dollars`;
-      $('spouseSocialSecurityEstimateDetail').textContent=`Claim age ${sss.claimAge}; modeled FRA ${sss.fullRetirementAge.toFixed(2)}. Montevallo wages are treated as Social Security-covered earnings; actual SSA records will be more precise.`;
+      const creditNote=sss.estimatedWorkCredits===null?'Work-credit eligibility not verified.':`${sss.estimatedWorkCredits}/40 work credits projected by claim year (${sss.workCreditMethod}).`;
+      $('spouseSocialSecurityEstimateDetail').textContent=`Claim age ${sss.claimAge}; modeled FRA ${sss.fullRetirementAge.toFixed(2)}. ${creditNote} Montevallo wages are treated as Social Security-covered earnings; actual SSA records will be more precise.`;
     } else {
       $('spouseSocialSecurityEstimateInline').textContent='Spouse Social Security estimate disabled';
       $('spouseSocialSecurityEstimateDetail').textContent='No spouse Social Security income is included.';
@@ -185,10 +195,11 @@
   function renderTrs(result){
     const trs=result.trs;
     if(!result.spouse||!trs.enabled){$('trsEstimateInline').textContent='Alabama TRS estimate disabled';$('trsEstimateDetail').textContent='Enable spouse and Alabama TRS to estimate the pension.';return;}
-    if(!trs.eligible){$('trsEstimateInline').textContent='No vested lifetime TRS pension modeled at the planned stop date';$('trsEstimateDetail').textContent=trs.eligibilityText;return;}
+    if(!trs.eligible){$('trsEstimateInline').textContent='No vested lifetime TRS pension modeled at the planned stop date';$('trsEstimateDetail').textContent=`${trs.eligibilityText} Future credit assumed at ${trs.futureServicePct}% of full time; confirmed additional federal credit: ${trs.plannedFederalService} years.`;return;}
     const pensionDisplay=displayState.mode==='real'?trs.annualBenefitRealAtStart:trs.annualBenefitNominal;
     $('trsEstimateInline').textContent=`Estimated maximum benefit: ${formatMoney(pensionDisplay)}/yr`;
-    $('trsEstimateDetail').textContent=`Tier ${trs.tier}; ${trs.serviceAtStop.toFixed(1)} projected service years; average final salary about ${formatMoney(trs.averageFinalSalary)}; pension starts ${formatDate(trs.pensionStart)}. ${trs.eligibilityText} No automatic COLA is assumed.`;
+    const extraCredit=trs.plannedFederalService>0?` ${trs.plannedFederalService} additional approved federal years are included.`:'';
+    $('trsEstimateDetail').textContent=`Tier ${trs.tier}; ${trs.serviceAtStop.toFixed(1)} projected service years, with future TRS credit at ${trs.futureServicePct}% of full time.${extraCredit} July–June average final salary about ${formatMoney(trs.averageFinalSalary)}; pension starts ${formatDate(trs.pensionStart)}. ${trs.eligibilityText} No automatic COLA is assumed.`;
   }
 
   function renderIncome(result){
