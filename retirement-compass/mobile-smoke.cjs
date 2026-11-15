@@ -77,6 +77,36 @@ async function run(browserType) {
     await page.locator('#currentIncome').dispatchEvent('change');
     const income = await page.inputValue('#currentIncome');
     assert.equal(income, '99000');
+
+    // Regression: inline validation must never shift the input panel while an
+    // iPhone user deletes and retypes a partial age or salary. Savings and
+    // contribution fields are included as controls for valid zero/blank values.
+    const panelTop = () => page.evaluate(() => {
+      const rect = document.querySelector('.workspace').getBoundingClientRect();
+      return rect.top + window.scrollY;
+    });
+    const originalPanelTop = await panelTop();
+    const inputSequences = [
+      ['retirementAge', ['', '6', '65', '655', '65']],
+      ['planThroughAge', ['', '9', '95', '100', '95']],
+      ['currentIncome', ['', '1', '10', '99000']],
+      ['currentSavings', ['', '1', '10000']],
+      ['employeeContributionPct', ['', '1', '10']]
+    ];
+    for (const [id, values] of inputSequences) {
+      const input = page.locator('#' + id);
+      await input.focus();
+      for (const value of values) {
+        await input.fill(value);
+        const newTop = await panelTop();
+        const shift = Math.abs(newTop - originalPanelTop);
+        console.log(tag + ' layout: ' + id + '=' + JSON.stringify(value) +
+          ', panel top=' + newTop.toFixed(1) + ', shift=' + shift.toFixed(1));
+        assert.ok(shift <= 2,
+          'Typing ' + id + '=' + JSON.stringify(value) +
+          ' shifts the calculator down by ' + shift.toFixed(1) + 'px');
+      }
+    }
     await page.locator('#plannerSectionLifestyle > summary').click();
     await page.locator('#desiredSpending').waitFor({ state: 'visible' });
     await page.locator('#desiredSpending').fill('70000');
