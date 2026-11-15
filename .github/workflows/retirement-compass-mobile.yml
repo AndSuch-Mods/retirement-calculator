@@ -1,0 +1,31 @@
+name: Retirement Compass mobile browser smoke
+
+on:
+  push:
+    branches:
+      - fix/mobile-interaction-20261115
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  mobile:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install browser test runner
+        run: |
+          npm install --no-save --no-package-lock playwright@1.58.2
+          npx playwright install --with-deps chromium webkit
+      - name: Test mobile UI in Chromium and WebKit
+        run: node retirement-compass/mobile-smoke.cjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: mobile-browser-screenshots
+          path: mobile-test-shots/
+          if-no-files-found: ignore
