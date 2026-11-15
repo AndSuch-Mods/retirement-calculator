@@ -8,7 +8,7 @@ const DEFAULTS=Object.freeze({
   socialSecurityEnabled:true,socialSecurityClaimAge:67,socialSecurityCareerStartAge:22,
   spouseEnabled:false,spouseBirthDate:'1992-08-09',spouseRetirementAge:62,spouseCurrentSavings:0,spouseCurrentIncome:50000,spouseEmployeeContributionPct:5,spouseSalaryGrowthPct:3,
   spouseAutoIncreaseEnabled:false,spouseAutoIncreasePctPoints:1,spouseMaxEmployeeContributionPct:15,spouseVoluntaryPlanType:'403b',spouseSocialSecurityEnabled:true,spouseSocialSecurityClaimAge:67,spouseSocialSecurityCareerStartAge:22,
-  spouseTrsEnabled:true,spouseTrsTier:'2',spouseTrsCurrentServiceYears:5,desiredSpending:60000,otherRetirementIncome:0,preRetirementReturnPct:7,retirementReturnPct:5,inflationPct:2.5
+  spouseTrsEnabled:true,spouseTrsTier:'2',spouseTrsCurrentServiceYears:5,spouseTrsFutureServicePct:100,spouseTrsPlannedFederalServiceYears:0,desiredSpending:60000,otherRetirementIncome:0,preRetirementReturnPct:7,retirementReturnPct:5,inflationPct:2.5
 });
 const num=(v,f=0)=>Number.isFinite(Number(v))?Number(v):f,clamp=(v,a,b)=>Math.min(Math.max(v,a),b),p2=n=>String(n).padStart(2,'0');
 function parseDate(v,f){if(v instanceof Date&&!isNaN(v))return new Date(Date.UTC(v.getUTCFullYear(),v.getUTCMonth(),v.getUTCDate()));if(typeof v==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(v)){const [y,m,d]=v.split('-').map(Number),x=new Date(Date.UTC(y,m-1,d));if(x.getUTCFullYear()===y&&x.getUTCMonth()===m-1&&x.getUTCDate()===d)return x;}return f?parseDate(f):null;}
@@ -21,13 +21,98 @@ function firstNextMonth(d){return new Date(Date.UTC(d.getUTCFullYear(),d.getUTCM
 function overlap(a,b,c,d){const s=maxD(a,c),e=minD(b,d);return e>s?yearFrac(s,e):0}function ageYearEnd(b,y){return Math.floor(age(b,new Date(Date.UTC(y,11,31,23,59,59))))}
 function normalize(raw={}){const m={...DEFAULTS,...raw},as=nowDate(m.asOfDate),b=parseDate(m.birthDate,DEFAULTS.birthDate),sb=parseDate(m.spouseBirthDate,DEFAULTS.spouseBirthDate);return{
  asOfDate:iso(as),birthDate:iso(b),currentAge:age(b,as),retirementAge:clamp(num(m.retirementAge,65),18,110),planThroughAge:clamp(num(m.planThroughAge,95),60,120),currentSavings:Math.max(num(m.currentSavings),0),currentIncome:Math.max(num(m.currentIncome),0),employeeContributionPct:clamp(num(m.employeeContributionPct),0,100),employerMatchRatePct:clamp(num(m.employerMatchRatePct),0,500),employerMatchCapPct:clamp(num(m.employerMatchCapPct),0,100),salaryGrowthPct:clamp(num(m.salaryGrowthPct),-20,50),autoIncreaseEnabled:!!m.autoIncreaseEnabled,autoIncreasePctPoints:clamp(num(m.autoIncreasePctPoints),0,25),maxEmployeeContributionPct:clamp(num(m.maxEmployeeContributionPct),0,100),socialSecurityEnabled:!!m.socialSecurityEnabled,socialSecurityClaimAge:clamp(num(m.socialSecurityClaimAge,67),62,70),socialSecurityCareerStartAge:clamp(num(m.socialSecurityCareerStartAge,22),14,40),
- spouseEnabled:!!m.spouseEnabled,spouseBirthDate:iso(sb),spouseCurrentAge:age(sb,as),spouseRetirementAge:clamp(num(m.spouseRetirementAge,62),18,110),spouseCurrentSavings:Math.max(num(m.spouseCurrentSavings),0),spouseCurrentIncome:Math.max(num(m.spouseCurrentIncome),0),spouseEmployeeContributionPct:clamp(num(m.spouseEmployeeContributionPct),0,100),spouseSalaryGrowthPct:clamp(num(m.spouseSalaryGrowthPct),-20,50),spouseAutoIncreaseEnabled:!!m.spouseAutoIncreaseEnabled,spouseAutoIncreasePctPoints:clamp(num(m.spouseAutoIncreasePctPoints),0,25),spouseMaxEmployeeContributionPct:clamp(num(m.spouseMaxEmployeeContributionPct),0,100),spouseVoluntaryPlanType:m.spouseVoluntaryPlanType==='457b'?'457b':'403b',spouseSocialSecurityEnabled:!!m.spouseSocialSecurityEnabled,spouseSocialSecurityClaimAge:clamp(num(m.spouseSocialSecurityClaimAge,67),62,70),spouseSocialSecurityCareerStartAge:clamp(num(m.spouseSocialSecurityCareerStartAge,22),14,40),spouseTrsEnabled:!!m.spouseTrsEnabled,spouseTrsTier:String(m.spouseTrsTier)==='1'?'1':'2',spouseTrsCurrentServiceYears:clamp(num(m.spouseTrsCurrentServiceYears),0,60),
+ spouseEnabled:!!m.spouseEnabled,spouseBirthDate:iso(sb),spouseCurrentAge:age(sb,as),spouseRetirementAge:clamp(num(m.spouseRetirementAge,62),18,110),spouseCurrentSavings:Math.max(num(m.spouseCurrentSavings),0),spouseCurrentIncome:Math.max(num(m.spouseCurrentIncome),0),spouseEmployeeContributionPct:clamp(num(m.spouseEmployeeContributionPct),0,100),spouseSalaryGrowthPct:clamp(num(m.spouseSalaryGrowthPct),-20,50),spouseAutoIncreaseEnabled:!!m.spouseAutoIncreaseEnabled,spouseAutoIncreasePctPoints:clamp(num(m.spouseAutoIncreasePctPoints),0,25),spouseMaxEmployeeContributionPct:clamp(num(m.spouseMaxEmployeeContributionPct),0,100),spouseVoluntaryPlanType:m.spouseVoluntaryPlanType==='457b'?'457b':'403b',spouseSocialSecurityEnabled:!!m.spouseSocialSecurityEnabled,spouseSocialSecurityClaimAge:clamp(num(m.spouseSocialSecurityClaimAge,67),62,70),spouseSocialSecurityCareerStartAge:clamp(num(m.spouseSocialSecurityCareerStartAge,22),14,40),spouseTrsEnabled:!!m.spouseTrsEnabled,spouseTrsTier:String(m.spouseTrsTier)==='1'?'1':'2',spouseTrsCurrentServiceYears:clamp(num(m.spouseTrsCurrentServiceYears),0,60),spouseTrsFutureServicePct:clamp(num(m.spouseTrsFutureServicePct,100),0,100),spouseTrsPlannedFederalServiceYears:clamp(num(m.spouseTrsPlannedFederalServiceYears),0,4),
  desiredSpending:Math.max(num(m.desiredSpending),0),otherRetirementIncome:Math.max(num(m.otherRetirementIncome),0),preRetirementReturnPct:clamp(num(m.preRetirementReturnPct),-50,50),retirementReturnPct:clamp(num(m.retirementReturnPct),-50,50),inflationPct:clamp(num(m.inflationPct),-10,25)};}
 function validate(i){const e=[],as=parseDate(i.asOfDate),b=parseDate(i.birthDate);if(addYears(b,i.retirementAge)<=as)e.push('Your retirement age must be after your current age.');if(i.planThroughAge<=i.retirementAge)e.push('Plan-through age must be greater than your retirement age.');if(i.currentIncome<=0)e.push('Your annual salary must be greater than $0.');if(i.autoIncreaseEnabled&&i.maxEmployeeContributionPct<i.employeeContributionPct)e.push('Your maximum contribution cannot be below the starting rate.');if(i.spouseEnabled){const sb=parseDate(i.spouseBirthDate);if(addYears(sb,i.spouseRetirementAge)<=as)e.push('Spouse retirement age must be after the spouse’s current age.');if(i.planThroughAge<=i.spouseRetirementAge)e.push('Plan-through age must be greater than spouse retirement age.');if(i.spouseCurrentIncome<=0)e.push('Spouse annual salary must be greater than $0.');}return e;}
 function person(i,sp=false){return sp?{name:'Spouse',birth:parseDate(i.spouseBirthDate),retirementAge:i.spouseRetirementAge,savings:i.spouseCurrentSavings,income:i.spouseCurrentIncome,rate:i.spouseEmployeeContributionPct,growth:i.spouseSalaryGrowthPct,auto:i.spouseAutoIncreaseEnabled,step:i.spouseAutoIncreasePctPoints,maxRate:i.spouseMaxEmployeeContributionPct,matchRate:0,matchCap:0,planType:i.spouseVoluntaryPlanType,ss:i.spouseSocialSecurityEnabled,ssClaim:i.spouseSocialSecurityClaimAge,careerStart:i.spouseSocialSecurityCareerStartAge}: {name:'You',birth:parseDate(i.birthDate),retirementAge:i.retirementAge,savings:i.currentSavings,income:i.currentIncome,rate:i.employeeContributionPct,growth:i.salaryGrowthPct,auto:i.autoIncreaseEnabled,step:i.autoIncreasePctPoints,maxRate:i.maxEmployeeContributionPct,matchRate:i.employerMatchRatePct,matchCap:i.employerMatchCapPct,planType:'401k',ss:i.socialSecurityEnabled,ssClaim:i.socialSecurityClaimAge,careerStart:i.socialSecurityCareerStartAge};}
 function salaryYear(p,y,cur){return Math.max(0,p.income*Math.pow(1+p.growth/100,y-cur))}function ssaBirthYear(b){return b.getUTCMonth()===0&&b.getUTCDate()===1?b.getUTCFullYear()-1:b.getUTCFullYear()}
 function estimateSS(p,i,as){if(!p.ss)return{enabled:false,annualBenefitReal:0,monthlyBenefitReal:0,claimDate:addYears(p.birth,p.ssClaim)};const by=ssaBirthYear(p.birth),cur=as.getUTCFullYear(),ret=addYears(p.birth,p.retirementAge),start=p.birth.getUTCFullYear()+Math.round(p.careerStart),stop=ret.getUTCFullYear(),idxY=by+60,elig=by+62,idxA=Base.averageWageIndexForYear(idxY),arr=[];for(let y=start;y<=stop;y++){let s=salaryYear(p,y,cur);if(y===stop)s*=overlap(new Date(Date.UTC(y,0,1)),new Date(Date.UTC(y+1,0,1)),new Date(Date.UTC(y,0,1)),ret);const covered=Math.min(s,Base.ssaTaxableMaxForYear(y));arr.push(y<idxY?covered*idxA/Base.averageWageIndexForYear(y):covered)}arr.sort((a,b)=>b-a);const top=arr.slice(0,35);while(top.length<35)top.push(0);const aime=Math.floor(top.reduce((a,b)=>a+b,0)/420),bp=Base.bendPointsForEligibilityYear(elig),pia=Math.floor((Math.min(aime,bp[0])*.9+Math.min(Math.max(aime-bp[0],0),bp[1]-bp[0])*.32+Math.max(aime-bp[1],0)*.15)*10)/10,fra=Base.fullRetirementAgeForBirthYear(by),factor=Base.socialSecurityClaimFactor(p.ssClaim,fra),claim=addYears(p.birth,p.ssClaim),claimY=claim.getUTCFullYear(),cola=i.inflationPct/100,piaClaim=pia*Math.pow(1+cola,Math.max(claimY-elig,0)),nom=piaClaim*factor,real=nom/Math.pow(1+cola,Math.max(years(as,claim),0));return{enabled:true,annualBenefitReal:real*12,monthlyBenefitReal:real,claimAge:p.ssClaim,claimDate:claim,fullRetirementAge:fra,claimFactor:factor,aime,piaAtEligibility:pia};}
-function estimateTRS(i){if(!i.spouseEnabled||!i.spouseTrsEnabled)return{enabled:false,eligible:false,annualBenefitNominal:0,monthlyBenefitNominal:0,annualBenefitRealAtStart:0};const as=parseDate(i.asOfDate),b=parseDate(i.spouseBirthDate),stop=addYears(b,i.spouseRetirementAge),service=i.spouseTrsCurrentServiceYears+Math.max(years(as,stop),0),tier=i.spouseTrsTier;let eligible=false,start=null,red=1,text='';if(tier==='1'){if(service>=25){eligible=true;start=firstNextMonth(stop);text='Tier 1: 25+ years qualifies at any age.'}else if(service>=10){eligible=true;start=firstNextMonth(maxD(stop,addYears(b,60)));text='Tier 1: vested with 10+ years; benefit starts no earlier than age 60.'}else text='Tier 1: fewer than 10 projected service years, so no vested lifetime pension is modeled.'}else{if(service>=30){eligible=true;start=firstNextMonth(stop);const a=age(b,start);red=Math.max(0,1-Math.max(62-a,0)*.02);text=a<62?'Tier 2: 30+ years permits early retirement with a 2% reduction per year under 62.':'Tier 2: 30+ years and age 62+.'}else if(service>=10){eligible=true;start=firstNextMonth(maxD(stop,addYears(b,62)));text='Tier 2: vested with 10+ years; benefit starts no earlier than age 62.'}else text='Tier 2: fewer than 10 projected service years, so no vested lifetime pension is modeled.'}const n=tier==='1'?3:5,cur=as.getUTCFullYear(),stopY=stop.getUTCFullYear(),sal=[];for(let y=stopY-9;y<=stopY;y++)sal.push(salaryYear(person(i,true),y,cur));sal.sort((a,b)=>b-a);const afs=sal.slice(0,n).reduce((a,b)=>a+b,0)/n,factor=tier==='1'?.020125:.0165;let annual=eligible?afs*service*factor*red:0;if(tier==='2')annual=Math.min(annual,afs*.8);const inf=start?Math.pow(1+i.inflationPct/100,Math.max(years(as,start),0)):1;return{enabled:true,tier,eligible,pensionStart:start,serviceAtStop:service,averageFinalSalary:afs,benefitFactor:factor,earlyRetirementReduction:red,annualBenefitNominal:annual,monthlyBenefitNominal:annual/12,annualBenefitRealAtStart:annual/inf,eligibilityText:text,automaticCola:false};}
+// RSA uses July-June contribution years when averaging the highest three or
+// five of the final ten. Split calendar-year salary estimates across that year.
+function trsAverageFinalSalary(i, stop, tier) {
+  const p = person(i, true);
+  const currentYear = parseDate(i.asOfDate).getUTCFullYear();
+  const yearsToAverage = tier === '1' ? 3 : 5;
+  const stopYear = stop.getUTCFullYear();
+  const july = new Date(Date.UTC(stopYear, 6, 1));
+  const latestFiscalStartYear = stop > july ? stopYear : stopYear - 1;
+  const earnings = [];
+
+  for (let year = latestFiscalStartYear - 9; year <= latestFiscalStartYear; year++) {
+    const fiscalStart = new Date(Date.UTC(year, 6, 1));
+    const fiscalEnd = new Date(Date.UTC(year + 1, 6, 1));
+    const serviceEnd = minD(fiscalEnd, stop);
+    if (serviceEnd <= fiscalStart) continue;
+    const yearDays = days(fiscalStart, fiscalEnd);
+    let pay = 0;
+    for (let calendarYear = year; calendarYear <= year + 1; calendarYear++) {
+      const calendarStart = new Date(Date.UTC(calendarYear, 0, 1));
+      const calendarEnd = new Date(Date.UTC(calendarYear + 1, 0, 1));
+      const paidDays = days(maxD(fiscalStart, calendarStart), minD(serviceEnd, calendarEnd));
+      pay += salaryYear(p, calendarYear, currentYear) * paidDays / yearDays;
+    }
+    earnings.push(pay);
+  }
+
+  return earnings.sort((a, b) => b - a)
+    .slice(0, yearsToAverage).reduce((sum, pay) => sum + pay, 0) / yearsToAverage;
+}
+
+function estimateTRS(i) {
+  if (!i.spouseEnabled || !i.spouseTrsEnabled) return {
+    enabled: false, eligible: false, annualBenefitNominal: 0,
+    monthlyBenefitNominal: 0, annualBenefitRealAtStart: 0
+  };
+  const as = parseDate(i.asOfDate);
+  const birth = parseDate(i.spouseBirthDate);
+  const stop = addYears(birth, i.spouseRetirementAge);
+  const tier = i.spouseTrsTier;
+  const futureCalendarYears = Math.max(years(as, stop), 0);
+  const futureMembershipService = futureCalendarYears * i.spouseTrsFutureServicePct / 100;
+  // Only enter qualified credit not already on the RSA statement. Act
+  // 2026-525 requires separate eligibility, certification, and full payment.
+  const plannedFederalService = i.spouseTrsPlannedFederalServiceYears;
+  const service = i.spouseTrsCurrentServiceYears + futureMembershipService + plannedFederalService;
+  let eligible = false, start = null, reduction = 1, eligibilityText = '';
+
+  if (tier === '1') {
+    if (service >= 25) {
+      eligible = true;
+      start = firstNextMonth(stop);
+      eligibilityText = 'Tier 1: 25+ years qualifies at any age.';
+    } else if (service >= 10) {
+      eligible = true;
+      start = firstNextMonth(maxD(stop, addYears(birth, 60)));
+      eligibilityText = 'Tier 1: vested with 10+ years; benefit starts no earlier than age 60.';
+    } else eligibilityText = 'Tier 1: fewer than 10 projected service years, so no vested lifetime pension is modeled.';
+  } else if (service >= 30) {
+    eligible = true;
+    start = firstNextMonth(stop);
+    const retirementAge = age(birth, start);
+    reduction = Math.max(0, 1 - Math.max(62 - retirementAge, 0) * 0.02);
+    eligibilityText = retirementAge < 62
+      ? 'Tier 2: 30+ years permits early retirement with a 2% reduction per year under 62.'
+      : 'Tier 2: 30+ years and age 62+.';
+  } else if (service >= 10) {
+    eligible = true;
+    start = firstNextMonth(maxD(stop, addYears(birth, 62)));
+    eligibilityText = 'Tier 2: vested with 10+ years; benefit starts no earlier than age 62.';
+  } else eligibilityText = 'Tier 2: fewer than 10 projected service years, so no vested lifetime pension is modeled.';
+
+  const averageFinalSalary = trsAverageFinalSalary(i, stop, tier);
+  const factor = tier === '1' ? 0.020125 : 0.0165;
+  let annual = eligible ? averageFinalSalary * service * factor * reduction : 0;
+  if (tier === '2') annual = Math.min(annual, averageFinalSalary * 0.8);
+  const inflationFactor = start
+    ? Math.pow(1 + i.inflationPct / 100, Math.max(years(as, start), 0)) : 1;
+  return {
+    enabled: true, tier, eligible, pensionStart: start, serviceAtStop: service,
+    futureMembershipService, plannedFederalService, futureServicePct: i.spouseTrsFutureServicePct,
+    averageFinalSalary, benefitFactor: factor, earlyRetirementReduction: reduction,
+    annualBenefitNominal: annual, monthlyBenefitNominal: annual / 12,
+    annualBenefitRealAtStart: annual / inflationFactor, eligibilityText, automaticCola: false
+  };
+}
 function events(i,ps,ss,trs){const as=parseDate(i.asOfDate);let end=addYears(ps[0].birth,i.planThroughAge);if(ps[1])end=maxD(end,addYears(ps[1].birth,i.planThroughAge));const d=[as,end];for(let y=as.getUTCFullYear()+1;y<=end.getUTCFullYear();y++)d.push(new Date(Date.UTC(y,0,1)));ps.forEach((p,k)=>{d.push(addYears(p.birth,p.retirementAge));if(ss[k].enabled)d.push(ss[k].claimDate)});if(trs.eligible)d.push(trs.pensionStart);return[...new Map(d.filter(x=>x>=as&&x<=end).map(x=>[+x,x])).values()].sort((a,b)=>a-b)}
 function analyze(raw={}){const i=normalize(raw),errs=validate(i);if(errs.length)return{input:i,errors:errs};const as=parseDate(i.asOfDate),ps=[person(i,false),...(i.spouseEnabled?[person(i,true)]:[])],ss=ps.map(p=>estimateSS(p,i,as)),trs=estimateTRS(i),rets=ps.map(p=>addYears(p.birth,p.retirementAge)),first=rets.reduce((a,b)=>minD(a,b)),both=rets.reduce((a,b)=>maxD(a,b)),ev=events(i,ps,ss,trs),inf=i.inflationPct/100,ytd={},caps=[];let bal=ps.reduce((s,p)=>s+p.savings,0),deplete=null,atFirst=null,totalE=0,totalEr=0,totalG=0,totalW=0;const tl=[{date:as,yearsFromNow:0,calendarYear:as.getUTCFullYear(),primaryAge:age(ps[0].birth,as),spouseAge:ps[1]?age(ps[1].birth,as):null,nominalBalance:bal,realBalance:bal}],segs=[];
  function pstate(p,k,a,b){const ret=rets[k],y=a.getUTCFullYear(),we=minD(b,ret),works=a<ret&&we>a,frac=works?yearFrac(a,we):0,salA=salaryYear(p,y,as.getUTCFullYear()),sal=salA*frac,key=`${k}-${y}`;if(!ytd[key])ytd[key]={emp:0,base:0,er:0};const yi=Math.max(0,y-as.getUTCFullYear()),rate=p.auto?Math.min(p.rate/100+p.step/100*yi,p.maxRate/100):p.rate/100,lims=Base.contributionLimitsForEmployee(y,ageYearEnd(p.birth,y)),desired=sal*rate,emp=Math.min(desired,Math.max(lims.employeeDeferralMax-ytd[key].emp,0),sal),base=Math.min(emp,Math.max(lims.deferral-ytd[key].base,0));let er=0,der=0;if(p.planType!=='457b'){const eff=sal?emp/sal:0,comp=Math.min(sal,lims.compensation);der=comp*Base.employerMatchEffectiveRate(eff,p.matchRate/100,p.matchCap/100);er=Math.min(der,Math.max(lims.overall-ytd[key].base-ytd[key].er,0))}ytd[key].emp+=emp;ytd[key].base+=base;ytd[key].er+=er;if(desired>emp+.01||der>er+.01)caps.push({person:p.name,year:y,age:ageYearEnd(p.birth,y),desiredEmployeeContribution:desired,employeeContribution:emp,desiredEmployerContribution:der,employerContribution:er,limits:lims,planType:p.planType});const sf=a>=first?frac:overlap(a,we,first,we),share=frac?Math.min(sf/frac,1):0,vol=emp*share,trsRate=k===1&&i.spouseTrsEnabled?(i.spouseTrsTier==='1'?.075:.062):0,trsPay=salA*sf*trsRate,avail=Math.max(0,salA*sf-vol-trsPay);return{works,employee:emp,employer:er,salaryAvailable:avail}}
