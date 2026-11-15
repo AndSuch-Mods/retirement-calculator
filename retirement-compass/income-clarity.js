@@ -255,7 +255,7 @@
   function loadChartScrubber() {
     if (document.querySelector('script[data-retirement-chart-scrubber]')) return;
     const script = document.createElement('script');
-    script.src = 'chart-scrubber.js';
+    script.src = 'chart-scrubber.js?v=20261115-mobile-fix';
     script.dataset.retirementChartScrubber = 'true';
     document.head.appendChild(script);
   }
