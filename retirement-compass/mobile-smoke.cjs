@@ -47,6 +47,30 @@ async function run(browserType) {
     }));
     console.log(tag, 'initial:', JSON.stringify(state));
     assert.ok(state.scrollHeight > state.viewportHeight + 200, 'Page is unexpectedly cut off at initial viewport');
+    // iOS Safari automatically zooms on focus when a form control is under
+    // 16 CSS pixels. Check *all* controls, including dynamically inserted
+    // SSA monthly wages, match tiers, and investment-blend inputs.
+    const controlFonts = await page.evaluate(() => {
+      const ignored = new Set(['checkbox', 'radio', 'range', 'hidden', 'button', 'submit', 'reset', 'file', 'color']);
+      const controls = Array.from(document.querySelectorAll('input, select, textarea'))
+        .filter(el => !ignored.has(el.type) && !el.disabled);
+      return {
+        checked: controls.length,
+        touch: matchMedia('(pointer: coarse)').matches,
+        viewport: document.querySelector('meta[name="viewport"]')?.content || '',
+        tooSmall: controls.map(el => ({
+          id: el.id || el.name || el.tagName,
+          size: parseFloat(getComputedStyle(el).fontSize)
+        })).filter(el => !(el.size >= 16))
+      };
+    });
+    console.log(tag, 'mobile form fonts:', JSON.stringify(controlFonts));
+    assert.ok(controlFonts.checked >= 20, 'Expected to inspect regular and dynamic form controls');
+    assert.deepEqual(controlFonts.tooSmall, [],
+      'Focus would trigger iOS page auto-zoom on undersized controls');
+    assert.ok(!/maximum-scale\\s*=|user-scalable\\s*=\\s*no/i.test(controlFonts.viewport),
+      'Do not prevent accessibility pinch-to-zoom using the viewport meta tag');
+
     await page.locator('#plannerSectionYou > summary').click();
     await page.locator('#currentIncome').waitFor({ state: 'visible' });
     await page.locator('#currentIncome').fill('99000');
