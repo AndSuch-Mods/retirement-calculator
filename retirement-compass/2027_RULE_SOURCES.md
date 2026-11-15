@@ -21,7 +21,7 @@ Roth catch-up treatment is **not** an account tax calculation; the threshold is 
 
 ## Social Security
 
-SSA's [2027 COLA and indexed changes](https://www.ssa.gov/news/press/factsheets/colafacts2027.pdf), the [retirement PIA bend points](https://www.ssa.gov/oact/cola/bendpoints.html) and [work-credit table](https://www.ssa.gov/oact/cola/QC.html) establish:
+SSA's [2027 COLA and indexed changes](https://www.ssa.gov/cola/factsheets/2027.html), the [retirement PIA bend points](https://www.ssa.gov/oact/cola/bendpoints.html) and [work-credit table](https://www.ssa.gov/oact/cola/QC.html) establish:
 
 - 2027 COLA: 3.6%, applied in December 2026 for January 2027 benefits.
 - 2027 covered-earnings cap: $192,300.
@@ -41,7 +41,7 @@ Sources: [RSA TRS Member Handbook](https://www.rsa-al.gov/uploads/files/TRS_Memb
 - Tier 2: 1.65% multiplier; highest five of final ten; standard retirement age 62 with ten years; early retirement with 30 years and 2% reduction for each year younger than 62; maximum 80% of average final compensation.
 - Future TRS credit defaults to 100% (full service), but may be reduced to model prorated/part-time membership. Prior credit remains the user-entered service from their RSA statement.
 - The salary model now calculates July 1–June 30 contribution-year compensation, rather than comparing calendar-year salaries.
-- An optional federal-service purchase scenario may add **up to four** qualifying years under Act 2026-525. This must be confirmed, purchased, and not already included in the RSA statement. The act has eligibility/cost restrictions, including ten contributing years (not counting military credit) and a certified service record; the calculator does not independently verify purchase eligibility or fund the payment.
+- An optional federal-service purchase scenario may add **up to four** qualifying years under Act 2026-525. This must be confirmed, purchased, and not already included in the RSA statement. The act has eligibility/cost restrictions, including ten contributing years (not counting military credit), a certified service record, and purchases in whole-year increments unless the total remaining qualifying service is shorter than a year; the calculator does not independently verify purchase eligibility or fund the payment.
 - No automatic TRS COLA is projected.
 
 Actual compensation records, unpaid leave, part-time service determinations, retirement-option elections, approved purchase cost and service-credit record may materially change RSA's award.
