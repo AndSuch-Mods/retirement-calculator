@@ -30,7 +30,7 @@
       colorScheme.name = 'color-scheme';
       document.head.appendChild(colorScheme);
     }
-    colorScheme.content = 'dark';
+    if (colorScheme.content !== 'dark') colorScheme.content = 'dark';
 
     if (!document.getElementById('retirementCompassDarkTheme')) {
       const style = document.createElement('style');
