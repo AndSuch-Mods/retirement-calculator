@@ -3,7 +3,7 @@ name: Retirement Compass mobile browser smoke
 on:
   push:
     branches:
-      - fix/mobile-interaction-20261115
+      - 'fix/**'
   pull_request:
     branches:
       - main

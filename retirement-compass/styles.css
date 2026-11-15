@@ -599,3 +599,14 @@ h1 {
 .ssa-payment-month > strong { grid-row: span 2; font-size: .81rem; color: var(--ink); }
 .ssa-payment-values { font-size: .78rem; font-weight: 720; color: var(--ink); }
 .ssa-payment-meta { font-size: .7rem; color: var(--muted); line-height: 1.4; }
+
+/* iOS Safari enlarges the whole page when a focused form control uses text
+   smaller than 16px. Keep controls readable without restricting pinch zoom.
+   Applies to dynamic SSA, investment-blend, and TRS fields as well. */
+@media (max-width: 980px), (pointer: coarse) {
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="hidden"]):not([type="button"]):not([type="submit"]):not([type="reset"]),
+  select,
+  textarea {
+    font-size: max(16px, 1rem) !important;
+  }
+}
